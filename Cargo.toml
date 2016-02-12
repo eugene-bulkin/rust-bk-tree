@@ -1,0 +1,6 @@
+[package]
+name = "bk_tree"
+version = "0.1.0"
+authors = ["Eugene Bulkin <eugene@eugenebulkin.name>"]
+
+[dependencies]
