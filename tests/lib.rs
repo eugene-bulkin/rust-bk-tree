@@ -30,3 +30,25 @@ fn tree_add() {
     println!("foo fop {}", levenshtein("foo", "fop"));
     assert_eq!(tree.root.unwrap().children.get(&1).unwrap().key, "fop");
 }
+
+#[test]
+fn tree_find() {
+    /*
+     * This example tree is from
+     * https://nullwords.wordpress.com/2013/03/13/the-bk-tree-a-data-structure-for-spell-checking/
+     */
+    let mut tree: BKTree<&str> = BKTree::new(levenshtein);
+    tree.add("book");
+    tree.add("books");
+    tree.add("cake");
+    tree.add("boo");
+    tree.add("cape");
+    tree.add("boon");
+    tree.add("cook");
+    tree.add("cart");
+    assert_eq!(tree.find("caqe", 1), vec!["cake", "cape"]);
+    assert_eq!(tree.find("cape", 1), vec!["cake", "cape"]);
+    assert_eq!(tree.find("book", 1), vec!["book", "books", "boo", "boon", "cook"]);
+    assert_eq!(tree.find("book", 0), vec!["book"]);
+    assert!(tree.find("foobar", 1).is_empty());
+}

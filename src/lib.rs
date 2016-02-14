@@ -1,8 +1,9 @@
 pub mod metrics;
 
 use std::collections::HashMap;
+use std::fmt::{self, Debug, Formatter};
 
-/// A node within the BK-tree.
+/// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
 pub struct BKNode<K: Copy> {
     /// The key determining the node.
     pub key: K,
@@ -23,12 +24,30 @@ impl<K> BKNode<K> where K: Copy
         }
     }
 
+    /// Add a child to the node.
+    ///
+    /// Given the distance from this node's key, add the given key as a child
+    /// node. *Warning:* this does not test the invariant that the distance as
+    /// measured by the tree between this node's key and the provided key
+    /// actually matches the distance passed in.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bk_tree::BKNode;
+    ///
+    /// let mut foo = BKNode::new("foo");
+    /// foo.add_child(1, "fop");
+    /// ```
     pub fn add_child(&mut self, distance: u64, key: K) {
         self.children.insert(distance, BKNode::new(key));
     }
+}
 
-    pub fn get_key(&self) -> K {
-        self.key
+impl<K> Debug for BKNode<K> where K: Debug + Copy
+{
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "BKNode({:?}: {:?})", self.key, self.children)
     }
 }
 
@@ -112,5 +131,63 @@ impl<K> BKTree<K> where K: Copy
                 self.root = Some(BKNode::new(key));
             }
         }
+    }
+
+    /// Searches for a key in the BK-tree given a certain tolerance.
+    ///
+    /// This traverses the tree searching for all keys with distance within
+    /// `tolerance` of of the key provided. The tolerance may be zero, in which
+    /// case this searches for exact matches. The results are returned in a
+    /// `Vec<K>`.
+    ///
+    /// *Note:* There is no guarantee on the order of the vector provided. The
+    /// elements returned may or may not be sorted in terms of distance from the
+    /// provided key.
+    ///
+    /// # Examples
+    /// ```
+    /// use bk_tree::{BKTree, metrics};
+    ///
+    /// let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+    ///
+    /// tree.add("foo");
+    /// tree.add("fop");
+    /// tree.add("bar");
+    ///
+    /// assert_eq!(tree.find("foo", 0), vec!["foo"]);
+    /// assert_eq!(tree.find("foo", 1), vec!["foo", "fop"]);
+    /// assert!(tree.find("foz", 0).is_empty());
+    /// ```
+    pub fn find(&self, key: K, tolerance: u64) -> Vec<K> {
+        match self.root {
+            Some(ref root) => {
+                let mut result: Vec<K> = Vec::new();
+                self.recursive_find(root, &mut result, key, tolerance);
+                result
+            }
+            None => Vec::new(),
+        }
+    }
+
+    fn recursive_find(&self, node: &BKNode<K>, result: &mut Vec<K>, key: K, tolerance: u64) {
+        let cur_dist = (&self.metric)(node.key, key);
+        let min_dist = if cur_dist < tolerance {
+            0
+        } else {
+            cur_dist - tolerance
+        };
+        let max_dist = cur_dist + tolerance;
+
+        if cur_dist <= tolerance {
+            result.push(node.key);
+        }
+
+        let mut child_result = Vec::new();
+        for (dist, ref child) in node.children.iter() {
+            if *dist >= min_dist && *dist <= max_dist {
+                self.recursive_find(child, &mut child_result, key, tolerance);
+            }
+        }
+        result.extend(child_result);
     }
 }
