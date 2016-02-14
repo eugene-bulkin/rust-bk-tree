@@ -29,6 +29,12 @@ fn tree_add() {
     };
     let mut tree: BKTree<&str> = BKTree::new(metric);
     tree.add("foo");
-    assert!(!tree.root.is_none());
-    assert_eq!(tree.root.unwrap().key, "foo");
+    match tree.root {
+        Some(ref root) => {
+            assert_eq!(root.key, "foo");
+        },
+        None => { assert!(false); }
+    }
+    tree.add("floo");
+    assert_eq!(tree.root.unwrap().children.get(&1).unwrap().key, "floo");
 }
