@@ -1,3 +1,5 @@
+pub mod metrics;
+
 use std::collections::HashMap;
 
 /// A node within the BK-tree.
@@ -55,10 +57,9 @@ impl<K> BKTree<K> where K: Copy
     /// # Examples
     ///
     /// ```
-    /// use bk_tree::BKTree;
+    /// use bk_tree::{BKTree, metrics};
     ///
-    /// let metric = |a: &str, b: &str| (a.len() + b.len()) as u64;
-    /// let tree: BKTree<&str> = BKTree::new(metric);
+    /// let tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
     /// ```
     pub fn new<M: 'static>(metric: M) -> BKTree<K>
         where M: Fn(K, K) -> u64
@@ -82,12 +83,13 @@ impl<K> BKTree<K> where K: Copy
     /// # Examples
     ///
     /// ```
-    /// use bk_tree::BKTree;
+    /// use bk_tree::{BKTree, metrics};
     ///
-    /// let metric = |a: &str, b: &str| (a.len() + b.len()) as u64;
-    /// let mut tree: BKTree<&str> = BKTree::new(metric);
+    /// let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+    ///
     /// tree.add("foo");
     /// tree.add("bar");
+    /// ```
     pub fn add(&mut self, key: K) {
         match self.root {
             Some(ref mut root) => {

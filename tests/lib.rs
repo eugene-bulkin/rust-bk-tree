@@ -1,6 +1,7 @@
 extern crate bk_tree;
 
 use bk_tree::{BKNode, BKTree};
+use bk_tree::metrics::levenshtein;
 
 #[test]
 fn node_construct() {
@@ -11,23 +12,13 @@ fn node_construct() {
 
 #[test]
 fn tree_construct() {
-    let metric = |a: &str, b: &str| {
-        let a_len = a.len() as i64;
-        let b_len = b.len() as i64;
-        (a_len - b_len).abs() as u64
-    };
-    let tree: BKTree<&str> = BKTree::new(metric);
+    let tree: BKTree<&str> = BKTree::new(levenshtein);
     assert!(tree.root.is_none());
 }
 
 #[test]
 fn tree_add() {
-    let metric = |a: &str, b: &str| {
-        let a_len = a.len() as i64;
-        let b_len = b.len() as i64;
-        (a_len - b_len).abs() as u64
-    };
-    let mut tree: BKTree<&str> = BKTree::new(metric);
+    let mut tree: BKTree<&str> = BKTree::new(levenshtein);
     tree.add("foo");
     match tree.root {
         Some(ref root) => {
@@ -35,6 +26,7 @@ fn tree_add() {
         },
         None => { assert!(false); }
     }
-    tree.add("floo");
-    assert_eq!(tree.root.unwrap().children.get(&1).unwrap().key, "floo");
+    tree.add("fop");
+    println!("foo fop {}", levenshtein("foo", "fop"));
+    assert_eq!(tree.root.unwrap().children.get(&1).unwrap().key, "fop");
 }
