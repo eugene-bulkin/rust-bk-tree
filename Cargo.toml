@@ -2,5 +2,13 @@
 name = "bk-tree"
 version = "0.1.0"
 authors = ["Eugene Bulkin <eugene@eugenebulkin.name>"]
+description = "A Rust BK-tree implementation"
+
+documentation = "http://eugene-bulkin.github.io/rust-docs/rust-bk-tree/bk_tree/index.html"
+repository = "https://github.com/eugene-bulkin/rust-bk-tree"
+
+readme = "README.md"
+license = "MIT"
+keywords = ["fuzzy", "search", "BK-tree"]
 
 [dependencies]
