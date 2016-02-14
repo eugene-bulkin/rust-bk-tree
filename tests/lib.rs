@@ -39,7 +39,19 @@ fn tree_add() {
         None => { assert!(false); }
     }
     tree.add("fop");
-    println!("foo fop {}", levenshtein("foo", "fop"));
+    assert_eq!(tree.root.unwrap().children.get(&1).unwrap().key, "fop");
+}
+
+#[test]
+fn tree_extend() {
+    let mut tree: BKTree<&str> = BKTree::new(levenshtein);
+    tree.extend(vec!["foo", "fop"]);
+    match tree.root {
+        Some(ref root) => {
+            assert_eq!(root.key, "foo");
+        },
+        None => { assert!(false); }
+    }
     assert_eq!(tree.root.unwrap().children.get(&1).unwrap().key, "fop");
 }
 

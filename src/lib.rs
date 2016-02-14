@@ -133,6 +133,26 @@ impl<K> BKTree<K> where K: Copy
         }
     }
 
+    /// Adds multiple keys to the tree.
+    ///
+    /// Given an iterator with items of type `K`, this method simply adds every
+    /// item to the tree.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bk_tree::{BKTree, metrics};
+    ///
+    /// let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+    ///
+    /// tree.extend(vec!["foo", "bar"]);
+    /// ```
+    pub fn extend<I: IntoIterator<Item = K>>(&mut self, keys: I) {
+        for key in keys {
+            self.add(key);
+        }
+    }
+
     /// Searches for a key in the BK-tree given a certain tolerance.
     ///
     /// This traverses the tree searching for all keys with distance within
