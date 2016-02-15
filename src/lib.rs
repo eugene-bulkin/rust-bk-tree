@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::fmt::{self, Debug, Formatter};
 
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
-pub struct BKNode<K: Copy> {
+pub struct BKNode<K: Clone> {
     /// The key determining the node.
     pub key: K,
     /// A hash-map of children, indexed by their distance from this node based
@@ -12,11 +12,11 @@ pub struct BKNode<K: Copy> {
     pub children: HashMap<u64, BKNode<K>>,
 }
 
-impl<K> BKNode<K> where K: Copy
+impl<K> BKNode<K> where K: Clone
 {
     /// Constructs a new `BKNode<K>`.
     pub fn new(key: K) -> BKNode<K>
-        where K: Copy
+        where K: Clone
     {
         BKNode {
             key: key,
@@ -44,7 +44,7 @@ impl<K> BKNode<K> where K: Copy
     }
 }
 
-impl<K> Debug for BKNode<K> where K: Debug + Copy
+impl<K> Debug for BKNode<K> where K: Debug + Clone
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "BKNode({:?}: {:?})", self.key, self.children)
@@ -53,7 +53,7 @@ impl<K> Debug for BKNode<K> where K: Debug + Copy
 
 /// A representation of a [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
 pub struct BKTree<K>
-    where K: Copy
+    where K: Clone
 {
     /// The root node. May be empty if nothing has been put in the tree yet.
     pub root: Option<BKNode<K>>,
@@ -62,7 +62,7 @@ pub struct BKTree<K>
     metric: Box<Fn(K, K) -> u64>,
 }
 
-impl<K> BKTree<K> where K: Copy
+impl<K> BKTree<K> where K: Clone
 {
     /// Constructs a new `BKTree<K>` using the provided metric.
     ///
@@ -113,7 +113,7 @@ impl<K> BKTree<K> where K: Copy
         match self.root {
             Some(ref mut root) => {
                 let mut cur_node = root;
-                let mut cur_dist = (&self.metric)(cur_node.key, key);
+                let mut cur_dist = (&self.metric)(cur_node.key.clone(), key.clone());
                 while cur_node.children.contains_key(&cur_dist) && cur_dist > 0 {
                     // We have to do some moving around here to safely get the
                     // child corresponding to the current distance away without
@@ -123,7 +123,7 @@ impl<K> BKTree<K> where K: Copy
                     let next_node = current.children.get_mut(&cur_dist).unwrap();
 
                     cur_node = next_node;
-                    cur_dist = (&self.metric)(cur_node.key, key);
+                    cur_dist = (&self.metric)(cur_node.key.clone(), key.clone());
                 }
                 cur_node.add_child(cur_dist, key);
             }
@@ -182,7 +182,7 @@ impl<K> BKTree<K> where K: Copy
         match self.root {
             Some(ref root) => {
                 let mut result: Vec<K> = Vec::new();
-                self.recursive_find(root, &mut result, key, tolerance);
+                self.recursive_find(root, &mut result, key.clone(), tolerance);
                 result
             }
             None => Vec::new(),
@@ -190,7 +190,7 @@ impl<K> BKTree<K> where K: Copy
     }
 
     fn recursive_find(&self, node: &BKNode<K>, result: &mut Vec<K>, key: K, tolerance: u64) {
-        let cur_dist = (&self.metric)(node.key, key);
+        let cur_dist = (&self.metric)(node.key.clone(), key.clone());
         let min_dist = if cur_dist < tolerance {
             0
         } else {
@@ -199,13 +199,13 @@ impl<K> BKTree<K> where K: Copy
         let max_dist = cur_dist + tolerance;
 
         if cur_dist <= tolerance {
-            result.push(node.key);
+            result.push(node.key.clone());
         }
 
         let mut child_result = Vec::new();
         for (dist, ref child) in node.children.iter() {
             if *dist >= min_dist && *dist <= max_dist {
-                self.recursive_find(child, &mut child_result, key, tolerance);
+                self.recursive_find(child, &mut child_result, key.clone(), tolerance);
             }
         }
         result.extend(child_result);
