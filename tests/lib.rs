@@ -39,7 +39,14 @@ fn tree_add() {
         None => { assert!(false); }
     }
     tree.add("fop");
-    assert_eq!(tree.root.unwrap().children.get(&1).unwrap().key, "fop");
+    tree.add("f\u{e9}\u{e9}");
+    match tree.root {
+        Some(ref root) => {
+            assert_eq!(root.children.get(&1).unwrap().key, "fop");
+            assert_eq!(root.children.get(&2).unwrap().key, "f\u{e9}\u{e9}");
+        },
+        None => { assert!(false); }
+    }
 }
 
 #[test]

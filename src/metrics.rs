@@ -21,8 +21,8 @@ use std::cmp::min;
 /// [1]: https://en.wikipedia.org/wiki/Levenshtein_distance
 /// [2]: https://en.wikipedia.org/wiki/Wagner%E2%80%93Fischer_algorithm
 pub fn levenshtein(a: &str, b: &str) -> u64 {
-    let len_a: u64 = a.len() as u64;
-    let len_b: u64 = b.len() as u64;
+    let len_a: u64 = a.chars().collect::<Vec<char>>().len() as u64;
+    let len_b: u64 = b.chars().collect::<Vec<char>>().len() as u64;
     if len_a == 0 {
         return len_b;
     }
