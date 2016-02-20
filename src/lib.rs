@@ -210,4 +210,32 @@ impl<K> BKTree<K> where K: Clone
         }
         result.extend(child_result);
     }
+
+    /// Searches for an exact match in the tree.
+    ///
+    /// This is pretty much the same as calling `find` with a tolerance of 0,
+    /// with the addition of pulling the value out of the vector if there was
+    /// a match.
+    ///
+    /// # Examples
+    /// ```
+    /// use bk_tree::{BKTree, metrics};
+    ///
+    /// let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+    ///
+    /// tree.add("foo");
+    /// tree.add("fop");
+    /// tree.add("bar");
+    ///
+    /// assert_eq!(tree.find_exact("foz"), None);
+    /// assert_eq!(tree.find_exact("foo"), Some("foo"));
+    /// ```
+    pub fn find_exact(&self, key: K) -> Option<K> {
+        let result = self.find(key, 0);
+        if result.is_empty() {
+            None
+        } else {
+            Some(result[0].clone())
+        }
+    }
 }

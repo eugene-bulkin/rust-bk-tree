@@ -83,3 +83,19 @@ fn tree_find() {
     assert_eq_sorted(tree.find("book", 0), vec!["book"]);
     assert!(tree.find("foobar", 1).is_empty());
 }
+
+#[test]
+fn tree_find_exact() {
+    let mut tree: BKTree<&str> = BKTree::new(levenshtein);
+    tree.add("book");
+    tree.add("books");
+    tree.add("cake");
+    tree.add("boo");
+    tree.add("cape");
+    tree.add("boon");
+    tree.add("cook");
+    tree.add("cart");
+    assert_eq!(tree.find_exact("caqe"), None);
+    assert_eq!(tree.find_exact("cape"), Some("cape"));
+    assert_eq!(tree.find_exact("book"), Some("book"));
+}
