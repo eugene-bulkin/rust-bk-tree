@@ -2,6 +2,7 @@
 extern crate bk_tree;
 extern crate rand;
 
+use bk_tree::BKTree;
 use bk_tree::metrics::levenshtein;
 use test::Bencher;
 use rand::{thread_rng, Rng};
