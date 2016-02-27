@@ -1,6 +1,6 @@
 [package]
 name = "bk-tree"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Eugene Bulkin <eugene@eugenebulkin.name>"]
 description = "A Rust BK-tree implementation"
 
