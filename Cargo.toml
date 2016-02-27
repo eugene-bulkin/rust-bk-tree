@@ -11,4 +11,5 @@ readme = "README.md"
 license = "MIT"
 keywords = ["fuzzy", "search", "BK-tree"]
 
-[dependencies]
+[dev-dependencies]
+rand = "0.3"
