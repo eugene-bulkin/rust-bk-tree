@@ -1,9 +1,9 @@
 extern crate bk_tree;
 
+use std::default::Default;
 use std::fmt::Debug;
 
 use bk_tree::{BKNode, BKTree};
-use bk_tree::metrics::levenshtein;
 
 fn assert_eq_sorted<T>(left: Vec<T>, right: Vec<T>) where T: Ord + Clone + Debug {
     let mut left_mut = left.to_vec();
@@ -24,13 +24,13 @@ fn node_construct() {
 
 #[test]
 fn tree_construct() {
-    let tree: BKTree<&str> = BKTree::new(levenshtein);
+    let tree: BKTree<&str> = Default::default();
     assert!(tree.root.is_none());
 }
 
 #[test]
 fn tree_add() {
-    let mut tree: BKTree<&str> = BKTree::new(levenshtein);
+    let mut tree: BKTree<&str> = Default::default();
     tree.add("foo");
     match tree.root {
         Some(ref root) => {
@@ -51,7 +51,7 @@ fn tree_add() {
 
 #[test]
 fn tree_extend() {
-    let mut tree: BKTree<&str> = BKTree::new(levenshtein);
+    let mut tree: BKTree<&str> = Default::default();
     tree.extend(vec!["foo", "fop"]);
     match tree.root {
         Some(ref root) => {
@@ -68,7 +68,7 @@ fn tree_find() {
      * This example tree is from
      * https://nullwords.wordpress.com/2013/03/13/the-bk-tree-a-data-structure-for-spell-checking/
      */
-    let mut tree: BKTree<&str> = BKTree::new(levenshtein);
+    let mut tree: BKTree<&str> = Default::default();
     tree.add("book");
     tree.add("books");
     tree.add("cake");
@@ -86,7 +86,7 @@ fn tree_find() {
 
 #[test]
 fn tree_find_exact() {
-    let mut tree: BKTree<&str> = BKTree::new(levenshtein);
+    let mut tree: BKTree<&str> = Default::default();
     tree.add("book");
     tree.add("books");
     tree.add("cake");

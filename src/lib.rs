@@ -2,6 +2,8 @@ pub mod metrics;
 
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Formatter};
+use std::iter::Extend;
+use std::default::Default;
 
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
 pub struct BKNode<K: Clone> {
@@ -133,26 +135,6 @@ impl<K> BKTree<K> where K: Clone
         }
     }
 
-    /// Adds multiple keys to the tree.
-    ///
-    /// Given an iterator with items of type `K`, this method simply adds every
-    /// item to the tree.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use bk_tree::{BKTree, metrics};
-    ///
-    /// let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
-    ///
-    /// tree.extend(vec!["foo", "bar"]);
-    /// ```
-    pub fn extend<I: IntoIterator<Item = K>>(&mut self, keys: I) {
-        for key in keys {
-            self.add(key);
-        }
-    }
-
     /// Searches for a key in the BK-tree given a certain tolerance.
     ///
     /// This traverses the tree searching for all keys with distance within
@@ -237,5 +219,33 @@ impl<K> BKTree<K> where K: Clone
         } else {
             Some(result[0].clone())
         }
+    }
+}
+
+impl<K: Clone> Extend<K> for BKTree<K> {
+    /// Adds multiple keys to the tree.
+    ///
+    /// Given an iterator with items of type `K`, this method simply adds every
+    /// item to the tree.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bk_tree::{BKTree, metrics};
+    ///
+    /// let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+    ///
+    /// tree.extend(vec!["foo", "bar"]);
+    /// ```
+    fn extend<I: IntoIterator<Item = K>>(&mut self, keys: I) {
+        for key in keys {
+            self.add(key);
+        }
+    }
+}
+
+impl<K: 'static + Clone + ToString> Default for BKTree<K> {
+    fn default() -> BKTree<K> {
+        BKTree::new(metrics::levenshtein)
     }
 }
