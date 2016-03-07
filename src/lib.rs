@@ -185,7 +185,7 @@ impl<K> BKTree<K> where K: Clone
         }
 
         let mut child_result = Vec::new();
-        for (dist, ref child) in node.children.iter() {
+        for (dist, ref child) in &node.children {
             if *dist >= min_dist && *dist <= max_dist {
                 self.recursive_find(child, &mut child_result, key.clone(), tolerance);
             }
