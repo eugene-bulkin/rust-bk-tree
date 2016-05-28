@@ -30,7 +30,7 @@ tree.find("bup", 2); // returns vec!["bar", "baz", "bup"]
 To run benchmarks, you need to have the nightly version of Rust installed. If you do (and use [multirust](/brson/multirust), for example), then you can run
 
 ```
-multirust nightly cargo bench
+rustup run nightly cargo bench
 ```
 
 to run benchmarks.
