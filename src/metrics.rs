@@ -31,13 +31,13 @@ impl<K: AsRef<str> + ?Sized> Metric<K> for Levenshtein
         let str_a: &str = a.as_ref();
         let str_b: &str = b.as_ref();
 
-        let len_a: u64 = str_a.chars().collect::<Vec<char>>().len() as u64;
-        let len_b: u64 = str_b.chars().collect::<Vec<char>>().len() as u64;
+        let len_a = str_a.chars().count();
+        let len_b = str_b.chars().count();
         if len_a == 0 {
-            return len_b;
+            return len_b as u64;
         }
         if len_b == 0 {
-            return len_a;
+            return len_a as u64;
         }
 
         // This is a case-insensitive algorithm
@@ -45,7 +45,7 @@ impl<K: AsRef<str> + ?Sized> Metric<K> for Levenshtein
         let b_lower = str_b.to_lowercase();
 
         // Initialize the array
-        let mut d: Vec<Vec<u64>> = Vec::new();
+        let mut d: Vec<Vec<usize>> = Vec::new();
         for j in 0..(len_b + 1) {
             let mut cur_vec = Vec::new();
             for i in 0..(len_a + 1) {
@@ -60,10 +60,8 @@ impl<K: AsRef<str> + ?Sized> Metric<K> for Levenshtein
             d.push(cur_vec);
         }
 
-        for j in 0..len_b as usize {
-            for i in 0..len_a as usize {
-                let chr_a = a_lower.chars().nth(i).unwrap();
-                let chr_b = b_lower.chars().nth(j).unwrap();
+        for (j, chr_b) in b_lower.chars().enumerate() {
+            for (i, chr_a) in a_lower.chars().enumerate() {
                 if chr_a == chr_b {
                     // If they're the same, then don't modify the value
                     d[j + 1][i + 1] = d[j][i];
@@ -77,6 +75,6 @@ impl<K: AsRef<str> + ?Sized> Metric<K> for Levenshtein
             }
         }
 
-        d[len_b as usize][len_a as usize]
+        d[len_b][len_a] as u64
     }
 }
