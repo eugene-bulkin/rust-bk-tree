@@ -1,12 +1,27 @@
 pub mod metrics;
 
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Formatter};
 use std::iter::Extend;
 use std::default::Default;
 
+/// A trait for a *metric* (distance function).
+///
+/// Implementations should follow the metric axioms:
+///
+/// * **Zero**: `distance(a, b) == 0` if and only if `a == b`
+/// * **Symmetry**: `distance(a, b) == distance(b, a)`
+/// * **Triangle inequality**: `distance(a, c) <= distance(a, b) + distance(b, c)`
+///
+/// If any of these rules are broken, then the BK-tree may give unexpected
+/// results.
+pub trait Metric<K: ?Sized> {
+    fn distance(&self, a: &K, b: &K) -> u64;
+}
+
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
-pub struct BKNode<K: Clone> {
+pub struct BKNode<K> {
     /// The key determining the node.
     pub key: K,
     /// A hash-map of children, indexed by their distance from this node based
@@ -14,11 +29,10 @@ pub struct BKNode<K: Clone> {
     pub children: HashMap<u64, BKNode<K>>,
 }
 
-impl<K> BKNode<K> where K: Clone
+impl<K> BKNode<K>
 {
     /// Constructs a new `BKNode<K>`.
     pub fn new(key: K) -> BKNode<K>
-        where K: Clone
     {
         BKNode {
             key: key,
@@ -46,7 +60,7 @@ impl<K> BKNode<K> where K: Clone
     }
 }
 
-impl<K> Debug for BKNode<K> where K: Debug + Clone
+impl<K> Debug for BKNode<K> where K: Debug
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "BKNode({:?}: {:?})", self.key, self.children)
@@ -54,17 +68,17 @@ impl<K> Debug for BKNode<K> where K: Debug + Clone
 }
 
 /// A representation of a [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
-pub struct BKTree<K>
-    where K: Clone
+pub struct BKTree<K, M = metrics::Levenshtein>
 {
     /// The root node. May be empty if nothing has been put in the tree yet.
     pub root: Option<BKNode<K>>,
     /// The metric being used to determine the distance between nodes on the
     /// tree.
-    metric: Box<Fn(K, K) -> u64>,
+    metric: M,
 }
 
-impl<K> BKTree<K> where K: Clone
+impl<K, M> BKTree<K, M>
+    where M: Metric<K>
 {
     /// Constructs a new `BKTree<K>` using the provided metric.
     ///
@@ -80,14 +94,13 @@ impl<K> BKTree<K> where K: Clone
     /// ```
     /// use bk_tree::{BKTree, metrics};
     ///
-    /// let tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+    /// let tree: BKTree<&str> = BKTree::new(metrics::Levenshtein);
     /// ```
-    pub fn new<M: 'static>(metric: M) -> BKTree<K>
-        where M: Fn(K, K) -> u64
+    pub fn new(metric: M) -> BKTree<K, M>
     {
         BKTree {
             root: None,
-            metric: Box::new(metric),
+            metric: metric,
         }
     }
 
@@ -106,7 +119,7 @@ impl<K> BKTree<K> where K: Clone
     /// ```
     /// use bk_tree::{BKTree, metrics};
     ///
-    /// let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+    /// let mut tree: BKTree<&str> = BKTree::new(metrics::Levenshtein);
     ///
     /// tree.add("foo");
     /// tree.add("bar");
@@ -115,7 +128,7 @@ impl<K> BKTree<K> where K: Clone
         match self.root {
             Some(ref mut root) => {
                 let mut cur_node = root;
-                let mut cur_dist = (&self.metric)(cur_node.key.clone(), key.clone());
+                let mut cur_dist = self.metric.distance(&cur_node.key, &key);
                 while cur_node.children.contains_key(&cur_dist) && cur_dist > 0 {
                     // We have to do some moving around here to safely get the
                     // child corresponding to the current distance away without
@@ -125,7 +138,7 @@ impl<K> BKTree<K> where K: Clone
                     let next_node = current.children.get_mut(&cur_dist).unwrap();
 
                     cur_node = next_node;
-                    cur_dist = (&self.metric)(cur_node.key.clone(), key.clone());
+                    cur_dist = self.metric.distance(&cur_node.key, &key);
                 }
                 cur_node.add_child(cur_dist, key);
             }
@@ -150,7 +163,7 @@ impl<K> BKTree<K> where K: Clone
     /// ```
     /// use bk_tree::{BKTree, metrics};
     ///
-    /// let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+    /// let mut tree: BKTree<&str> = BKTree::new(metrics::Levenshtein);
     ///
     /// tree.add("foo");
     /// tree.add("fop");
@@ -160,19 +173,23 @@ impl<K> BKTree<K> where K: Clone
     /// assert_eq!(tree.find("foo", 1), vec!["foo", "fop"]);
     /// assert!(tree.find("foz", 0).is_empty());
     /// ```
-    pub fn find(&self, key: K, tolerance: u64) -> Vec<K> {
+    pub fn find<Q: ?Sized>(&self, key: &Q, tolerance: u64) -> Vec<K>
+        where K: Borrow<Q> + Clone, M: Metric<Q>
+    {
         match self.root {
             Some(ref root) => {
                 let mut result: Vec<K> = Vec::new();
-                self.recursive_find(root, &mut result, key.clone(), tolerance);
+                self.recursive_find(root, &mut result, key, tolerance);
                 result
             }
             None => Vec::new(),
         }
     }
 
-    fn recursive_find(&self, node: &BKNode<K>, result: &mut Vec<K>, key: K, tolerance: u64) {
-        let cur_dist = (&self.metric)(node.key.clone(), key.clone());
+    fn recursive_find<Q: ?Sized>(&self, node: &BKNode<K>, result: &mut Vec<K>, key: &Q, tolerance: u64)
+        where K: Borrow<Q> + Clone, M: Metric<Q>
+    {
+        let cur_dist = self.metric.distance(node.key.borrow() as &Q, key);
         let min_dist = if cur_dist < tolerance {
             0
         } else {
@@ -187,7 +204,7 @@ impl<K> BKTree<K> where K: Clone
         let mut child_result = Vec::new();
         for (dist, ref child) in &node.children {
             if *dist >= min_dist && *dist <= max_dist {
-                self.recursive_find(child, &mut child_result, key.clone(), tolerance);
+                self.recursive_find(child, &mut child_result, key, tolerance);
             }
         }
         result.extend(child_result);
@@ -203,7 +220,7 @@ impl<K> BKTree<K> where K: Clone
     /// ```
     /// use bk_tree::{BKTree, metrics};
     ///
-    /// let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+    /// let mut tree: BKTree<&str> = BKTree::new(metrics::Levenshtein);
     ///
     /// tree.add("foo");
     /// tree.add("fop");
@@ -212,17 +229,15 @@ impl<K> BKTree<K> where K: Clone
     /// assert_eq!(tree.find_exact("foz"), None);
     /// assert_eq!(tree.find_exact("foo"), Some("foo"));
     /// ```
-    pub fn find_exact(&self, key: K) -> Option<K> {
+    pub fn find_exact<Q: ?Sized>(&self, key: &Q) -> Option<K>
+        where K: Borrow<Q> + Clone, M: Metric<Q>
+    {
         let result = self.find(key, 0);
-        if result.is_empty() {
-            None
-        } else {
-            Some(result[0].clone())
-        }
+        result.into_iter().next()
     }
 }
 
-impl<K: Clone> Extend<K> for BKTree<K> {
+impl<K: Clone, M: Metric<K>> Extend<K> for BKTree<K, M> {
     /// Adds multiple keys to the tree.
     ///
     /// Given an iterator with items of type `K`, this method simply adds every
@@ -233,7 +248,7 @@ impl<K: Clone> Extend<K> for BKTree<K> {
     /// ```
     /// use bk_tree::{BKTree, metrics};
     ///
-    /// let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+    /// let mut tree: BKTree<&str> = BKTree::new(metrics::Levenshtein);
     ///
     /// tree.extend(vec!["foo", "bar"]);
     /// ```
@@ -244,8 +259,8 @@ impl<K: Clone> Extend<K> for BKTree<K> {
     }
 }
 
-impl<K: 'static + Clone + ToString> Default for BKTree<K> {
+impl<K: AsRef<str>> Default for BKTree<K> {
     fn default() -> BKTree<K> {
-        BKTree::new(metrics::levenshtein)
+        BKTree::new(metrics::Levenshtein)
     }
 }
