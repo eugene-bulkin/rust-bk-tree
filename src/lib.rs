@@ -63,11 +63,12 @@ impl<K> BKNode<K>
 impl<K> Debug for BKNode<K> where K: Debug
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "BKNode({:?}: {:?})", self.key, self.children)
+        f.debug_map().entry(&self.key, &self.children).finish()
     }
 }
 
 /// A representation of a [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
+#[derive(Debug)]
 pub struct BKTree<K, M = metrics::Levenshtein>
 {
     /// The root node. May be empty if nothing has been put in the tree yet.
