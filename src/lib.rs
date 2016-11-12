@@ -211,7 +211,7 @@ impl<K, M> BKTree<K, M>
     }
 }
 
-impl<K: Clone, M: Metric<K>> Extend<K> for BKTree<K, M> {
+impl<K, M: Metric<K>> Extend<K> for BKTree<K, M> {
     /// Adds multiple keys to the tree.
     ///
     /// Given an iterator with items of type `K`, this method simply adds every
