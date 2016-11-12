@@ -190,12 +190,8 @@ impl<K, M> BKTree<K, M>
         where K: Borrow<Q> + Clone, M: Metric<Q>
     {
         let cur_dist = self.metric.distance(node.key.borrow() as &Q, key);
-        let min_dist = if cur_dist < tolerance {
-            0
-        } else {
-            cur_dist - tolerance
-        };
-        let max_dist = cur_dist + tolerance;
+        let min_dist = cur_dist.saturating_sub(tolerance);
+        let max_dist = cur_dist.saturating_add(tolerance);
 
         if cur_dist <= tolerance {
             result.push(node.key.clone());
