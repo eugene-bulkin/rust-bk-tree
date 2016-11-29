@@ -5,9 +5,11 @@ use std::fmt::Debug;
 
 use bk_tree::{BKNode, BKTree};
 
-fn assert_eq_sorted<T>(left: Vec<T>, right: Vec<T>) where T: Ord + Clone + Debug {
-    let mut left_mut = left.to_vec();
-    let mut right_mut = right.to_vec();
+fn assert_eq_sorted<'t, T: 't, I>(left: I, right: &[(u64, T)])
+    where T: Ord + Debug, I: Iterator<Item=(u64, &'t T)>
+{
+    let mut left_mut: Vec<_> = left.collect();
+    let mut right_mut: Vec<_> = right.iter().map(|&(dist, ref key)| (dist, key)).collect();
 
     left_mut.sort();
     right_mut.sort();
@@ -77,11 +79,11 @@ fn tree_find() {
     tree.add("boon");
     tree.add("cook");
     tree.add("cart");
-    assert_eq_sorted(tree.find("caqe", 1), vec!["cake", "cape"]);
-    assert_eq_sorted(tree.find("cape", 1), vec!["cake", "cape"]);
-    assert_eq_sorted(tree.find("book", 1), vec!["book", "books", "boo", "boon", "cook"]);
-    assert_eq_sorted(tree.find("book", 0), vec!["book"]);
-    assert!(tree.find("foobar", 1).is_empty());
+    assert_eq_sorted(tree.find("caqe", 1), &[(1, "cake"), (1, "cape")]);
+    assert_eq_sorted(tree.find("cape", 1), &[(1, "cake"), (0, "cape")]);
+    assert_eq_sorted(tree.find("book", 1), &[(0, "book"), (1, "books"), (1, "boo"), (1, "boon"), (1, "cook")]);
+    assert_eq_sorted(tree.find("book", 0), &[(0, "book")]);
+    assert!(tree.find("foobar", 1).next().is_none());
 }
 
 #[test]
@@ -96,6 +98,6 @@ fn tree_find_exact() {
     tree.add("cook");
     tree.add("cart");
     assert_eq!(tree.find_exact("caqe"), None);
-    assert_eq!(tree.find_exact("cape"), Some("cape"));
-    assert_eq!(tree.find_exact("book"), Some("book"));
+    assert_eq!(tree.find_exact("cape"), Some(&"cape"));
+    assert_eq!(tree.find_exact("book"), Some(&"book"));
 }

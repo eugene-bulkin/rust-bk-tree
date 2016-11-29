@@ -1,7 +1,7 @@
 pub mod metrics;
 
 use std::borrow::Borrow;
-use std::collections::HashMap;
+use std::collections::{hash_map, HashMap};
 use std::fmt::{self, Debug, Formatter};
 use std::iter::Extend;
 use std::default::Default;
@@ -63,11 +63,12 @@ impl<K> BKNode<K>
 impl<K> Debug for BKNode<K> where K: Debug
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "BKNode({:?}: {:?})", self.key, self.children)
+        f.debug_map().entry(&self.key, &self.children).finish()
     }
 }
 
 /// A representation of a [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
+#[derive(Debug)]
 pub struct BKTree<K, M = metrics::Levenshtein>
 {
     /// The root node. May be empty if nothing has been put in the tree yet.
@@ -152,12 +153,12 @@ impl<K, M> BKTree<K, M>
     ///
     /// This traverses the tree searching for all keys with distance within
     /// `tolerance` of of the key provided. The tolerance may be zero, in which
-    /// case this searches for exact matches. The results are returned in a
-    /// `Vec<K>`.
+    /// case this searches for exact matches. The results are returned as an
+    /// iterator of `(distance, key)` pairs.
     ///
-    /// *Note:* There is no guarantee on the order of the vector provided. The
-    /// elements returned may or may not be sorted in terms of distance from the
-    /// provided key.
+    /// *Note:* There is no guarantee on the order of elements yielded by the
+    /// iterator. The elements returned may or may not be sorted in terms of
+    /// distance from the provided key.
     ///
     /// # Examples
     /// ```
@@ -169,52 +170,26 @@ impl<K, M> BKTree<K, M>
     /// tree.add("fop");
     /// tree.add("bar");
     ///
-    /// assert_eq!(tree.find("foo", 0), vec!["foo"]);
-    /// assert_eq!(tree.find("foo", 1), vec!["foo", "fop"]);
-    /// assert!(tree.find("foz", 0).is_empty());
+    /// assert_eq!(tree.find("foo", 0).collect::<Vec<_>>(), vec![(0, &"foo")]);
+    /// assert_eq!(tree.find("foo", 1).collect::<Vec<_>>(), vec![(0, &"foo"), (1, &"fop")]);
+    /// assert!(tree.find("foz", 0).next().is_none());
     /// ```
-    pub fn find<Q: ?Sized>(&self, key: &Q, tolerance: u64) -> Vec<K>
-        where K: Borrow<Q> + Clone, M: Metric<Q>
+    pub fn find<'a, 'q, Q: ?Sized>(&'a self, key: &'q Q, tolerance: u64) -> Find<'a, 'q, K, Q, M>
+        where K: Borrow<Q>, M: Metric<Q>
     {
-        match self.root {
-            Some(ref root) => {
-                let mut result: Vec<K> = Vec::new();
-                self.recursive_find(root, &mut result, key, tolerance);
-                result
-            }
-            None => Vec::new(),
+        Find {
+            root: self.root.as_ref(),
+            stack: Vec::new(),
+            tolerance: tolerance,
+            metric: &self.metric,
+            key: key,
         }
-    }
-
-    fn recursive_find<Q: ?Sized>(&self, node: &BKNode<K>, result: &mut Vec<K>, key: &Q, tolerance: u64)
-        where K: Borrow<Q> + Clone, M: Metric<Q>
-    {
-        let cur_dist = self.metric.distance(node.key.borrow() as &Q, key);
-        let min_dist = if cur_dist < tolerance {
-            0
-        } else {
-            cur_dist - tolerance
-        };
-        let max_dist = cur_dist + tolerance;
-
-        if cur_dist <= tolerance {
-            result.push(node.key.clone());
-        }
-
-        let mut child_result = Vec::new();
-        for (dist, ref child) in &node.children {
-            if *dist >= min_dist && *dist <= max_dist {
-                self.recursive_find(child, &mut child_result, key, tolerance);
-            }
-        }
-        result.extend(child_result);
     }
 
     /// Searches for an exact match in the tree.
     ///
-    /// This is pretty much the same as calling `find` with a tolerance of 0,
-    /// with the addition of pulling the value out of the vector if there was
-    /// a match.
+    /// This is equivalent to calling `find` with a tolerance of 0, then picking
+    /// out the first result.
     ///
     /// # Examples
     /// ```
@@ -227,17 +202,16 @@ impl<K, M> BKTree<K, M>
     /// tree.add("bar");
     ///
     /// assert_eq!(tree.find_exact("foz"), None);
-    /// assert_eq!(tree.find_exact("foo"), Some("foo"));
+    /// assert_eq!(tree.find_exact("foo"), Some(&"foo"));
     /// ```
-    pub fn find_exact<Q: ?Sized>(&self, key: &Q) -> Option<K>
-        where K: Borrow<Q> + Clone, M: Metric<Q>
+    pub fn find_exact<Q: ?Sized>(&self, key: &Q) -> Option<&K>
+        where K: Borrow<Q>, M: Metric<Q>
     {
-        let result = self.find(key, 0);
-        result.into_iter().next()
+        self.find(key, 0).next().map(|(_, found_key)| found_key)
     }
 }
 
-impl<K: Clone, M: Metric<K>> Extend<K> for BKTree<K, M> {
+impl<K, M: Metric<K>> Extend<K> for BKTree<K, M> {
     /// Adds multiple keys to the tree.
     ///
     /// Given an iterator with items of type `K`, this method simply adds every
@@ -262,5 +236,90 @@ impl<K: Clone, M: Metric<K>> Extend<K> for BKTree<K, M> {
 impl<K: AsRef<str>> Default for BKTree<K> {
     fn default() -> BKTree<K> {
         BKTree::new(metrics::Levenshtein)
+    }
+}
+
+/// Iterator for the results of `BKTree::find`.
+pub struct Find<'a, 'q, K: 'a, Q: 'q + ?Sized, M: 'a>
+{
+    /// Root node.
+    root: Option<&'a BKNode<K>>,
+    /// Iterator stack. Because of the inversion of control in play, we must
+    /// implement the traversal using an explicit stack.
+    stack: Vec<StackItem<'a, K>>,
+    tolerance: u64,
+    metric: &'a M,
+    key: &'q Q,
+}
+
+/// An element of the iteration stack.
+struct StackItem<'a, K: 'a> {
+    cur_dist: u64,
+    children_iter: hash_map::Iter<'a, u64, BKNode<K>>,
+}
+
+/// Delayed action type. Because of Rust's borrowing rules, we can't inspect
+/// and modify the stack at the same time. We instead record the modification
+/// and apply it at the end of the procedure.
+enum StackAction<'a, K: 'a>
+{
+    Push(&'a BKNode<K>),
+    Pop,
+}
+
+impl<'a, 'q, K, Q: ?Sized, M> Iterator for Find<'a, 'q, K, Q, M>
+    where K: Borrow<Q>, M: Metric<Q>
+{
+    type Item = (u64, &'a K);
+
+    fn next(&mut self) -> Option<(u64, &'a K)> {
+        // Special case the root node
+        if let Some(root) = self.root.take() {
+            let cur_dist = self.metric.distance(self.key, root.key.borrow() as &Q);
+            self.stack.push(StackItem {
+                cur_dist: cur_dist,
+                children_iter: root.children.iter(),
+            });
+            if cur_dist <= self.tolerance {
+                return Some((cur_dist, &root.key));
+            }
+        }
+
+        loop {
+            let action = match self.stack.last_mut() {
+                Some(stack_top) => {
+                    // Find the first child node within an appropriate distance
+                    let min_dist = stack_top.cur_dist.saturating_sub(self.tolerance);
+                    let max_dist = stack_top.cur_dist.saturating_add(self.tolerance);
+                    let mut action = StackAction::Pop;
+                    for (dist, child_node) in &mut stack_top.children_iter {
+                        if min_dist <= *dist && *dist <= max_dist {
+                            action = StackAction::Push(child_node);
+                            break;
+                        }
+                    }
+                    action
+                },
+                None => return None,
+            };
+
+            match action {
+                StackAction::Push(child_node) => {
+                    // Push this child node onto the stack (to inspect later)
+                    let cur_dist = self.metric.distance(self.key, child_node.key.borrow() as &Q);
+                    self.stack.push(StackItem {
+                        cur_dist: cur_dist,
+                        children_iter: child_node.children.iter(),
+                    });
+                    // If this node is also close enough to the key, yield it
+                    if cur_dist <= self.tolerance {
+                        return Some((cur_dist, &child_node.key));
+                    }
+                },
+                StackAction::Pop => {
+                    self.stack.pop();
+                },
+            }
+        }
     }
 }
