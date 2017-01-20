@@ -1,6 +1,5 @@
 extern crate bk_tree;
 
-use std::default::Default;
 use std::fmt::Debug;
 
 use bk_tree::{BKNode, BKTree};

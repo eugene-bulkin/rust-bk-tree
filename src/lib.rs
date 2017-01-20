@@ -4,7 +4,6 @@ use std::borrow::Borrow;
 use std::collections::{hash_map, HashMap};
 use std::fmt::{self, Debug, Formatter};
 use std::iter::Extend;
-use std::default::Default;
 
 /// A trait for a *metric* (distance function).
 ///
