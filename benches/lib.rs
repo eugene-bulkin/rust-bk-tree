@@ -3,7 +3,7 @@ extern crate bk_tree;
 extern crate rand;
 
 use bk_tree::BKTree;
-use bk_tree::metrics::levenshtein;
+use bk_tree::metrics::Levenshtein;
 use test::Bencher;
 use rand::{thread_rng, Rng};
 
@@ -19,38 +19,38 @@ fn make_words<R: Rng>(rng: &mut R, n: i32) -> Vec<String> {
 
 #[bench]
 fn bench_find_exact(b: &mut Bencher) {
-    let mut tree: BKTree<String> = BKTree::new(levenshtein);
+    let mut tree: BKTree<String> = BKTree::new(Levenshtein);
     let words = make_words(&mut thread_rng(), 1000);
-    tree.extend(words.clone());
-    let word = words.last().unwrap();
+    let word = words.last().unwrap().clone();
+    tree.extend(words);
 
-    b.iter(move || {
-        tree.find_exact(word.clone())
+    b.iter(|| {
+        tree.find_exact(&word)
     });
 }
 
 #[bench]
 fn bench_find_tol_one(b: &mut Bencher) {
-    let mut tree: BKTree<String> = BKTree::new(levenshtein);
+    let mut tree: BKTree<String> = BKTree::new(Levenshtein);
     let words = make_words(&mut thread_rng(), 1000);
-    tree.extend(words.clone());
-    let word = words.last().unwrap();
+    let word = words.last().unwrap().clone();
+    tree.extend(words);
 
-    b.iter(move || {
-        tree.find(word.clone(), 1)
+    b.iter(|| {
+        tree.find(&word, 1)
     });
 }
 
 
 #[bench]
 fn bench_find_tol_two(b: &mut Bencher) {
-    let mut tree: BKTree<String> = BKTree::new(levenshtein);
+    let mut tree: BKTree<String> = BKTree::new(Levenshtein);
     let words = make_words(&mut thread_rng(), 1000);
-    tree.extend(words.clone());
-    let word = words.last().unwrap();
+    let word = words.last().unwrap().clone();
+    tree.extend(words);
 
-    b.iter(move || {
-        tree.find(word.clone(), 2)
+    b.iter(|| {
+        tree.find(&word, 2)
     });
 }
 
@@ -59,7 +59,7 @@ fn bench_add(b: &mut Bencher) {
     let words = make_words(&mut thread_rng(), 1000);
 
     b.iter(move || {
-        let mut tree: BKTree<String> = BKTree::new(levenshtein);
+        let mut tree: BKTree<String> = BKTree::new(Levenshtein);
         for word in words.clone() {
             tree.add(word);
         }
@@ -71,7 +71,7 @@ fn bench_extend(b: &mut Bencher) {
     let words = make_words(&mut thread_rng(), 1000);
 
     b.iter(move || {
-        let mut tree: BKTree<String> = BKTree::new(levenshtein);
+        let mut tree: BKTree<String> = BKTree::new(Levenshtein);
         tree.extend(words.clone());
     });
 }
