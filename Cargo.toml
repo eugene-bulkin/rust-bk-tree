@@ -4,7 +4,7 @@ version = "0.3.0"
 authors = ["Eugene Bulkin <eugene.bulkin2@gmail.com>"]
 description = "A Rust BK-tree implementation"
 
-documentation = "http://eugene-bulkin.github.io/rust-docs/rust-bk-tree/bk_tree/index.html"
+documentation = "https://docs.rs/bk-tree/latest/bk_tree/"
 repository = "https://github.com/eugene-bulkin/rust-bk-tree"
 
 readme = "README.md"
@@ -13,4 +13,4 @@ keywords = ["fuzzy", "search", "BK-tree"]
 categories = ["data-structures", "text-processing"]
 
 [dev-dependencies]
-rand = "0.3"
+rand = "0.8.2"

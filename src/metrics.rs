@@ -1,7 +1,6 @@
 //! This is a collection of string metrics that are suitable for use with a
 //! BK-tree.
 
-
 use std::cmp::min;
 
 use Metric;
@@ -26,8 +25,7 @@ use Metric;
 #[derive(Debug)]
 pub struct Levenshtein;
 
-impl<K: AsRef<str> + ?Sized> Metric<K> for Levenshtein
-{
+impl<K: AsRef<str> + ?Sized> Metric<K> for Levenshtein {
     fn distance(&self, a: &K, b: &K) -> u64 {
         let str_a: &str = a.as_ref();
         let str_b: &str = b.as_ref();
