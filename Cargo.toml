@@ -12,5 +12,11 @@ license = "MIT"
 keywords = ["fuzzy", "search", "BK-tree"]
 categories = ["data-structures", "text-processing"]
 
+[dependencies]
+fnv = { version = "1.0.7", optional = true }
+
 [dev-dependencies]
 rand = "0.3"
+
+[features]
+enable-fnv = ["fnv"]

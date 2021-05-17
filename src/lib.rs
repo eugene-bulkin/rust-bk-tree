@@ -4,8 +4,17 @@ use std::{
     fmt::{Debug, Formatter, Result as FmtResult},
     iter::Extend,
     borrow::Borrow,
-    collections::{VecDeque, HashMap},
+    collections::VecDeque,
 };
+
+#[cfg(feature = "enable-fnv")]
+extern crate fnv;
+#[cfg(feature = "enable-fnv")]
+use fnv::FnvHashMap;
+
+#[cfg(not(feature = "enable-fnv"))]
+use std::collections::HashMap;
+
 
 /// A trait for a *metric* (distance function).
 ///
@@ -27,15 +36,22 @@ struct BKNode<K> {
     key: K,
     /// A hash-map of children, indexed by their distance from this node based
     /// on the metric being used by the tree.
+    #[cfg(feature = "enable-fnv")]
+    children: FnvHashMap<u64, BKNode<K>>,
+    #[cfg(not(feature = "enable-fnv"))]
     children: HashMap<u64, BKNode<K>>,
 }
 
 impl<K> BKNode<K> {
     /// Constructs a new `BKNode<K>`.
     pub fn new(key: K) -> BKNode<K> {
+        #[cfg(feature = "enable-fnv")]
+        let children = fnv::FnvHashMap::default();
+        #[cfg(not(feature = "enable-fnv"))]
+        let children = HashMap::default();
         BKNode {
             key,
-            children: HashMap::new(),
+            children,
         }
     }
 
