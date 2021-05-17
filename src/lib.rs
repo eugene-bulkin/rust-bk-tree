@@ -1,9 +1,11 @@
 pub mod metrics;
 
-use std::borrow::Borrow;
-use std::collections::{hash_map, HashMap};
-use std::fmt::{self, Debug, Formatter};
-use std::iter::Extend;
+use std::{
+    fmt::{Debug, Formatter, Result as FmtResult},
+    iter::Extend,
+    borrow::Borrow,
+    collections::{VecDeque, HashMap},
+};
 
 /// A trait for a *metric* (distance function).
 ///
@@ -28,13 +30,11 @@ struct BKNode<K> {
     children: HashMap<u64, BKNode<K>>,
 }
 
-impl<K> BKNode<K>
-{
+impl<K> BKNode<K> {
     /// Constructs a new `BKNode<K>`.
-    pub fn new(key: K) -> BKNode<K>
-    {
+    pub fn new(key: K) -> BKNode<K> {
         BKNode {
-            key: key,
+            key,
             children: HashMap::new(),
         }
     }
@@ -59,17 +59,18 @@ impl<K> BKNode<K>
     }
 }
 
-impl<K> Debug for BKNode<K> where K: Debug
+impl<K> Debug for BKNode<K>
+where
+    K: Debug,
 {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
         f.debug_map().entry(&self.key, &self.children).finish()
     }
 }
 
 /// A representation of a [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
 #[derive(Debug)]
-pub struct BKTree<K, M = metrics::Levenshtein>
-{
+pub struct BKTree<K, M = metrics::Levenshtein> {
     /// The root node. May be empty if nothing has been put in the tree yet.
     root: Option<BKNode<K>>,
     /// The metric being used to determine the distance between nodes on the
@@ -78,7 +79,8 @@ pub struct BKTree<K, M = metrics::Levenshtein>
 }
 
 impl<K, M> BKTree<K, M>
-    where M: Metric<K>
+where
+    M: Metric<K>,
 {
     /// Constructs a new `BKTree<K>` using the provided metric.
     ///
@@ -96,12 +98,8 @@ impl<K, M> BKTree<K, M>
     ///
     /// let tree: BKTree<&str> = BKTree::new(metrics::Levenshtein);
     /// ```
-    pub fn new(metric: M) -> BKTree<K, M>
-    {
-        BKTree {
-            root: None,
-            metric: metric,
-        }
+    pub fn new(metric: M) -> BKTree<K, M> {
+        BKTree { root: None, metric }
     }
 
     /// Adds a key to the tree.
@@ -133,7 +131,6 @@ impl<K, M> BKTree<K, M>
                     // We have to do some moving around here to safely get the
                     // child corresponding to the current distance away without
                     // accidentally trying to mutate the wrong thing.
-                    //
                     let current = cur_node;
                     let next_node = current.children.get_mut(&cur_dist).unwrap();
 
@@ -174,14 +171,20 @@ impl<K, M> BKTree<K, M>
     /// assert!(tree.find("foz", 0).next().is_none());
     /// ```
     pub fn find<'a, 'q, Q: ?Sized>(&'a self, key: &'q Q, tolerance: u64) -> Find<'a, 'q, K, Q, M>
-        where K: Borrow<Q>, M: Metric<Q>
+    where
+        K: Borrow<Q>,
+        M: Metric<Q>,
     {
+        let candidates = if let Some(root) = &self.root {
+            VecDeque::from(vec![root])
+        } else {
+            VecDeque::new()
+        };
         Find {
-            root: self.root.as_ref(),
-            stack: Vec::new(),
-            tolerance: tolerance,
+            candidates,
+            tolerance,
             metric: &self.metric,
-            key: key,
+            key,
         }
     }
 
@@ -204,7 +207,9 @@ impl<K, M> BKTree<K, M>
     /// assert_eq!(tree.find_exact("foo"), Some(&"foo"));
     /// ```
     pub fn find_exact<Q: ?Sized>(&self, key: &Q) -> Option<&K>
-        where K: Borrow<Q>, M: Metric<Q>
+    where
+        K: Borrow<Q>,
+        M: Metric<Q>,
     {
         self.find(key, 0).next().map(|(_, found_key)| found_key)
     }
@@ -239,87 +244,40 @@ impl<K: AsRef<str>> Default for BKTree<K> {
 }
 
 /// Iterator for the results of `BKTree::find`.
-pub struct Find<'a, 'q, K: 'a, Q: 'q + ?Sized, M: 'a>
-{
-    /// Root node.
-    root: Option<&'a BKNode<K>>,
+pub struct Find<'a, 'q, K: 'a, Q: 'q + ?Sized, M: 'a> {
     /// Iterator stack. Because of the inversion of control in play, we must
     /// implement the traversal using an explicit stack.
-    stack: Vec<StackItem<'a, K>>,
+    candidates: VecDeque<&'a BKNode<K>>,
     tolerance: u64,
     metric: &'a M,
     key: &'q Q,
 }
 
-/// An element of the iteration stack.
-struct StackItem<'a, K: 'a> {
-    cur_dist: u64,
-    children_iter: hash_map::Iter<'a, u64, BKNode<K>>,
-}
-
-/// Delayed action type. Because of Rust's borrowing rules, we can't inspect
-/// and modify the stack at the same time. We instead record the modification
-/// and apply it at the end of the procedure.
-enum StackAction<'a, K: 'a>
-{
-    Push(&'a BKNode<K>),
-    Pop,
-}
-
 impl<'a, 'q, K, Q: ?Sized, M> Iterator for Find<'a, 'q, K, Q, M>
-    where K: Borrow<Q>, M: Metric<Q>
+where
+    K: Borrow<Q>,
+    M: Metric<Q>,
 {
     type Item = (u64, &'a K);
 
     fn next(&mut self) -> Option<(u64, &'a K)> {
-        // Special case the root node
-        if let Some(root) = self.root.take() {
-            let cur_dist = self.metric.distance(self.key, root.key.borrow() as &Q);
-            self.stack.push(StackItem {
-                cur_dist: cur_dist,
-                children_iter: root.children.iter(),
-            });
+        while let Some(current) = self.candidates.pop_front() {
+            let BKNode { key, children } = current;
+            let cur_dist = self.metric.distance(self.key, current.key.borrow() as &Q);
+            // Find the first child node within an appropriate distance
+            let min_dist = cur_dist.saturating_sub(self.tolerance);
+            let max_dist = cur_dist.saturating_add(self.tolerance);
+            for (dist, child_node) in &mut children.iter() {
+                if min_dist <= *dist && *dist <= max_dist {
+                    self.candidates.push_back(child_node);
+                }
+            }
+            // If this node is also close enough to the key, yield it
             if cur_dist <= self.tolerance {
-                return Some((cur_dist, &root.key));
+                return Some((cur_dist, &key));
             }
         }
-
-        loop {
-            let action = match self.stack.last_mut() {
-                Some(stack_top) => {
-                    // Find the first child node within an appropriate distance
-                    let min_dist = stack_top.cur_dist.saturating_sub(self.tolerance);
-                    let max_dist = stack_top.cur_dist.saturating_add(self.tolerance);
-                    let mut action = StackAction::Pop;
-                    for (dist, child_node) in &mut stack_top.children_iter {
-                        if min_dist <= *dist && *dist <= max_dist {
-                            action = StackAction::Push(child_node);
-                            break;
-                        }
-                    }
-                    action
-                },
-                None => return None,
-            };
-
-            match action {
-                StackAction::Push(child_node) => {
-                    // Push this child node onto the stack (to inspect later)
-                    let cur_dist = self.metric.distance(self.key, child_node.key.borrow() as &Q);
-                    self.stack.push(StackItem {
-                        cur_dist: cur_dist,
-                        children_iter: child_node.children.iter(),
-                    });
-                    // If this node is also close enough to the key, yield it
-                    if cur_dist <= self.tolerance {
-                        return Some((cur_dist, &child_node.key));
-                    }
-                },
-                StackAction::Pop => {
-                    self.stack.pop();
-                },
-            }
-        }
+        None
     }
 }
 
@@ -329,7 +287,9 @@ mod tests {
     use {BKNode, BKTree};
 
     fn assert_eq_sorted<'t, T: 't, I>(left: I, right: &[(u64, T)])
-        where T: Ord + Debug, I: Iterator<Item=(u64, &'t T)>
+    where
+        T: Ord + Debug,
+        I: Iterator<Item = (u64, &'t T)>,
     {
         let mut left_mut: Vec<_> = left.collect();
         let mut right_mut: Vec<_> = right.iter().map(|&(dist, ref key)| (dist, key)).collect();
@@ -360,8 +320,10 @@ mod tests {
         match tree.root {
             Some(ref root) => {
                 assert_eq!(root.key, "foo");
-            },
-            None => { assert!(false); }
+            }
+            None => {
+                assert!(false);
+            }
         }
         tree.add("fop");
         tree.add("f\u{e9}\u{e9}");
@@ -369,8 +331,10 @@ mod tests {
             Some(ref root) => {
                 assert_eq!(root.children.get(&1).unwrap().key, "fop");
                 assert_eq!(root.children.get(&2).unwrap().key, "f\u{e9}\u{e9}");
-            },
-            None => { assert!(false); }
+            }
+            None => {
+                assert!(false);
+            }
         }
     }
 
@@ -381,8 +345,10 @@ mod tests {
         match tree.root {
             Some(ref root) => {
                 assert_eq!(root.key, "foo");
-            },
-            None => { assert!(false); }
+            }
+            None => {
+                assert!(false);
+            }
         }
         assert_eq!(tree.root.unwrap().children.get(&1).unwrap().key, "fop");
     }
@@ -404,7 +370,16 @@ mod tests {
         tree.add("cart");
         assert_eq_sorted(tree.find("caqe", 1), &[(1, "cake"), (1, "cape")]);
         assert_eq_sorted(tree.find("cape", 1), &[(1, "cake"), (0, "cape")]);
-        assert_eq_sorted(tree.find("book", 1), &[(0, "book"), (1, "books"), (1, "boo"), (1, "boon"), (1, "cook")]);
+        assert_eq_sorted(
+            tree.find("book", 1),
+            &[
+                (0, "book"),
+                (1, "books"),
+                (1, "boo"),
+                (1, "boon"),
+                (1, "cook"),
+            ],
+        );
         assert_eq_sorted(tree.find("book", 0), &[(0, "book")]);
         assert!(tree.find("foobar", 1).next().is_none());
     }
