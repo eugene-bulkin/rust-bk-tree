@@ -27,7 +27,8 @@ use std::collections::HashMap;
 /// If any of these rules are broken, then the BK-tree may give unexpected
 /// results.
 pub trait Metric<K: ?Sized> {
-    fn distance(&self, a: &K, b: &K) -> u64;
+    fn distance(&self, a: &K, b: &K) -> u32;
+    fn threshold_distance(&self, a: &K, b: &K, threshold: u32) -> Option<u32>;
 }
 
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
@@ -37,21 +38,22 @@ struct BKNode<K> {
     /// A hash-map of children, indexed by their distance from this node based
     /// on the metric being used by the tree.
     #[cfg(feature = "enable-fnv")]
-    children: FnvHashMap<u64, BKNode<K>>,
+    children: FnvHashMap<u32, BKNode<K>>,
     #[cfg(not(feature = "enable-fnv"))]
-    children: HashMap<u64, BKNode<K>>,
+    children: HashMap<u32, BKNode<K>>,
+    max_child_distance: Option<u32>,
 }
 
 impl<K> BKNode<K> {
     /// Constructs a new `BKNode<K>`.
     pub fn new(key: K) -> BKNode<K> {
-        #[cfg(feature = "enable-fnv")]
-        let children = fnv::FnvHashMap::default();
-        #[cfg(not(feature = "enable-fnv"))]
-        let children = HashMap::default();
         BKNode {
             key,
-            children,
+            #[cfg(feature = "enable-fnv")]
+            children: fnv::FnvHashMap::default(),
+            #[cfg(not(feature = "enable-fnv"))]
+            children: HashMap::default(),
+            max_child_distance: None,
         }
     }
 
@@ -70,8 +72,9 @@ impl<K> BKNode<K> {
     /// let mut foo = BKNode::new("foo");
     /// foo.add_child(1, "fop");
     /// ```
-    pub fn add_child(&mut self, distance: u64, key: K) {
+    pub fn add_child(&mut self, distance: u32, key: K) {
         self.children.insert(distance, BKNode::new(key));
+        self.max_child_distance = self.max_child_distance.max(Some(distance));
     }
 }
 
@@ -186,7 +189,7 @@ where
     /// assert_eq!(tree.find("foo", 1).collect::<Vec<_>>(), vec![(0, &"foo"), (1, &"fop")]);
     /// assert!(tree.find("foz", 0).next().is_none());
     /// ```
-    pub fn find<'a, 'q, Q: ?Sized>(&'a self, key: &'q Q, tolerance: u64) -> Find<'a, 'q, K, Q, M>
+    pub fn find<'a, 'q, Q: ?Sized>(&'a self, key: &'q Q, tolerance: u32) -> Find<'a, 'q, K, Q, M>
     where
         K: Borrow<Q>,
         M: Metric<Q>,
@@ -264,7 +267,7 @@ pub struct Find<'a, 'q, K: 'a, Q: 'q + ?Sized, M: 'a> {
     /// Iterator stack. Because of the inversion of control in play, we must
     /// implement the traversal using an explicit stack.
     candidates: VecDeque<&'a BKNode<K>>,
-    tolerance: u64,
+    tolerance: u32,
     metric: &'a M,
     key: &'q Q,
 }
@@ -274,23 +277,32 @@ where
     K: Borrow<Q>,
     M: Metric<Q>,
 {
-    type Item = (u64, &'a K);
+    type Item = (u32, &'a K);
 
-    fn next(&mut self) -> Option<(u64, &'a K)> {
+    fn next(&mut self) -> Option<(u32, &'a K)> {
         while let Some(current) = self.candidates.pop_front() {
-            let BKNode { key, children } = current;
-            let cur_dist = self.metric.distance(self.key, current.key.borrow() as &Q);
-            // Find the first child node within an appropriate distance
-            let min_dist = cur_dist.saturating_sub(self.tolerance);
-            let max_dist = cur_dist.saturating_add(self.tolerance);
-            for (dist, child_node) in &mut children.iter() {
-                if min_dist <= *dist && *dist <= max_dist {
-                    self.candidates.push_back(child_node);
+            let BKNode {
+                key,
+                children,
+                max_child_distance,
+            } = current;
+            let distance_cutoff = max_child_distance.unwrap_or(0) + self.tolerance;
+            let cur_dist = self.metric.threshold_distance(self.key,
+                                                          current.key.borrow() as &Q,
+                                                          distance_cutoff);
+            if let Some(dist) = cur_dist {
+                // Find the first child node within an appropriate distance
+                let min_dist = dist.saturating_sub(self.tolerance);
+                let max_dist = dist.saturating_add(self.tolerance);
+                for (dist, child_node) in &mut children.iter() {
+                    if min_dist <= *dist && *dist <= max_dist {
+                        self.candidates.push_back(child_node);
+                    }
                 }
-            }
-            // If this node is also close enough to the key, yield it
-            if cur_dist <= self.tolerance {
-                return Some((cur_dist, &key));
+                // If this node is also close enough to the key, yield it
+                if dist <= self.tolerance {
+                    return Some((dist, &key));
+                }
             }
         }
         None
@@ -302,10 +314,10 @@ mod tests {
     use std::fmt::Debug;
     use {BKNode, BKTree};
 
-    fn assert_eq_sorted<'t, T: 't, I>(left: I, right: &[(u64, T)])
+    fn assert_eq_sorted<'t, T: 't, I>(left: I, right: &[(u32, T)])
     where
         T: Ord + Debug,
-        I: Iterator<Item = (u64, &'t T)>,
+        I: Iterator<Item = (u32, &'t T)>,
     {
         let mut left_mut: Vec<_> = left.collect();
         let mut right_mut: Vec<_> = right.iter().map(|&(dist, ref key)| (dist, key)).collect();
@@ -346,7 +358,7 @@ mod tests {
         match tree.root {
             Some(ref root) => {
                 assert_eq!(root.children.get(&1).unwrap().key, "fop");
-                assert_eq!(root.children.get(&2).unwrap().key, "f\u{e9}\u{e9}");
+                assert_eq!(root.children.get(&4).unwrap().key, "f\u{e9}\u{e9}");
             }
             None => {
                 assert!(false);
