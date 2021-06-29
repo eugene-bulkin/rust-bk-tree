@@ -232,6 +232,27 @@ where
     {
         self.find(key, 0).next().map(|(_, found_key)| found_key)
     }
+
+    /// [Future] Return (probably something like) a `Result<BytesBuffer>`, the serialized bytes representation of `self`.
+    ///
+    /// See: https://eli.thegreenplace.net/2011/09/29/an-interesting-tree-serialization-algorithm-from-dwarf#id3
+    ///
+    /// [I still do not know what this algorithm is called!]
+    ///
+    /// For now we call this `to_bytes`. This is just a stub to get the serialization stuff off the ground.
+    pub fn to_bytes(&self) {
+	fn serialize<K> (node: &BKNode<K>) {
+	    if !node.children.is_empty() {
+		print!("|0--{:?}|CHILDREN_FOLLOW", "<node.key>");
+		for (dist, child_node) in node.children.iter() {
+		    serialize(child_node);
+		}
+	    } else {
+		print!("|0--{:?}|END_CHILDREN", "<node.key>");
+	    }
+	}
+	serialize(&self.root.as_ref().unwrap());
+    }
 }
 
 impl<K, M: Metric<K>> Extend<K> for BKTree<K, M> {
@@ -426,5 +447,31 @@ mod tests {
         assert_eq!(tree.find_exact("caqe"), None);
         assert_eq!(tree.find_exact("cape"), Some(&"cape"));
         assert_eq!(tree.find_exact("book"), Some(&"book"));
+    }
+
+    #[test]
+    fn tree_serialize() {
+        let mut tree_before: BKTree<&str> = Default::default();
+
+        tree_before.add("book");
+        tree_before.add("books");
+        tree_before.add("cake");
+        tree_before.add("boo");
+        tree_before.add("cape");
+        tree_before.add("boon");
+        tree_before.add("cook");
+        tree_before.add("cart");
+
+	println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+	tree_before.to_bytes();
+	println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+        assert_eq_sorted(tree_before.find("caqe", 1), &[(1, "cake"), (1, "cape")]);
+        assert_eq_sorted(tree_before.find("cape", 1), &[(1, "cake"), (0, "cape")]);
+
+	// let _serialized = tree_before.to_bytes();
+	// let tree_after = BKTree<&str>::from_bytes(serialized);
+        // assert_eq_sorted(tree_after.find("caqe", 1), &[(1, "cake"), (1, "cape")]);
+        // assert_eq_sorted(tree_after.find("cape", 1), &[(1, "cake"), (0, "cape")]);
     }
 }
