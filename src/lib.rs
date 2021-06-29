@@ -467,16 +467,9 @@ mod tests {
         tree_before.add("cook");
         tree_before.add("cart");
 
-	println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 	let _ = tree_before.to_bytes();
-	println!("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
         assert_eq_sorted(tree_before.find("caqe", 1), &[(1, "cake"), (1, "cape")]);
         assert_eq_sorted(tree_before.find("cape", 1), &[(1, "cake"), (0, "cape")]);
-
-	// let _serialized = tree_before.to_bytes();
-	// let tree_after = BKTree<&str>::from_bytes(serialized);
-        // assert_eq_sorted(tree_after.find("caqe", 1), &[(1, "cake"), (1, "cape")]);
-        // assert_eq_sorted(tree_after.find("cape", 1), &[(1, "cake"), (0, "cape")]);
     }
 }
