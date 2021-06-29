@@ -13,7 +13,7 @@ extern crate fnv;
 use fnv::FnvHashMap;
 
 extern crate bytes;
-use bytes::{BytesMut, BufMut};
+use bytes::{BytesMut, BufMut, Bytes};
 
 #[cfg(not(feature = "enable-fnv"))]
 use std::collections::HashMap;
@@ -243,7 +243,7 @@ where
     /// [I still do not know what this algorithm is called!]
     ///
     /// For now we call this `to_bytes`. This is just a stub to get the serialization stuff off the ground.
-    pub fn to_bytes(&self) -> Result<(), &str> {
+    pub fn to_bytes(&self) -> Bytes {
 	let mut mem = BytesMut::new();
 	fn serialize<K> (node: &BKNode<K>, mem2: &mut BytesMut) {
 	    if !node.children.is_empty() {
@@ -255,8 +255,14 @@ where
 		mem2.put(&b"|0--<node.key>|END_CHILDREN"[..]);
 	    }
 	}
-	serialize(&self.root.as_ref().unwrap(), &mut mem);
-	Ok(())
+	let root = match self.root.as_ref() {
+	    Some(node) => {
+		node
+	    }
+	    None => {return mem.freeze()}
+	};
+	serialize(&root, &mut mem);
+	mem.freeze()
     }
 }
 
@@ -467,7 +473,8 @@ mod tests {
         tree_before.add("cook");
         tree_before.add("cart");
 
-	let _ = tree_before.to_bytes();
+	let serialized_bytes = tree_before.to_bytes();
+	assert!(serialized_bytes.len() > 0);
 
         assert_eq_sorted(tree_before.find("caqe", 1), &[(1, "cake"), (1, "cape")]);
         assert_eq_sorted(tree_before.find("cape", 1), &[(1, "cake"), (0, "cape")]);
