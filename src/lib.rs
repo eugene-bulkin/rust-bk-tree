@@ -245,14 +245,14 @@ where
     /// For now we call this `to_bytes`. This is just a stub to get the serialization stuff off the ground.
     pub fn to_bytes(&self) -> Bytes {
 	let mut mem = BytesMut::new();
-	fn serialize<K> (node: &BKNode<K>, mem2: &mut BytesMut) {
+	fn serialize<K> (node: &BKNode<K>, mem: &mut BytesMut) {
 	    if !node.children.is_empty() {
-		mem2.put(&b"|0--<node.key>|CHILDREN_FOLLOW"[..]);
+		mem.put(&b"|0--<node.key>|CHILDREN_FOLLOW"[..]);
 		for (_dist, child_node) in node.children.iter() {
-		    serialize(child_node, mem2);
+		    serialize(child_node, mem);
 		}
 	    } else {
-		mem2.put(&b"|0--<node.key>|END_CHILDREN"[..]);
+		mem.put(&b"|0--<node.key>|END_CHILDREN"[..]);
 	    }
 	}
 	let root = match self.root.as_ref() {
