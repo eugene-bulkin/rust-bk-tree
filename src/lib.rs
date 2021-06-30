@@ -100,6 +100,44 @@ pub struct BKTree<K, M = metrics::Levenshtein> {
     metric: M,
 }
 
+pub trait BKTreeSerialize {
+    fn to_bytes(&self) -> Bytes;
+}
+
+impl BKTreeSerialize for BKTree<String> {
+    /// [Future] Return (probably something like) a `Result<BytesBuffer>`, the serialized bytes representation of `self`.
+    ///
+    /// See: https://eli.thegreenplace.net/2011/09/29/an-interesting-tree-serialization-algorithm-from-dwarf
+    ///
+    /// [I still do not know what this algorithm is called!]
+    ///
+    /// For now we call this `to_bytes`. This is just a stub to get the serialization stuff off the ground.
+    fn to_bytes(&self) -> Bytes {
+	let mut mem = BytesMut::new();
+	fn serialize (node: &BKNode<String>, mem: &mut BytesMut) {
+	    if !node.children.is_empty() {
+		mem.put(&(node.key.clone().into_bytes())[..]);
+		mem.put_u8(b'v');
+		for (_dist, child_node) in node.children.iter() {
+		    serialize(child_node, mem);
+		    mem.put_u8(b'>');
+		}
+	    } else {
+		mem.put(&(node.key.clone().into_bytes())[..]);
+		mem.put_u8(b'>');
+	    }
+	}
+	let root = match self.root.as_ref() {
+	    Some(node) => {
+		node
+	    }
+	    None => {return mem.freeze()}
+	};
+	serialize(&root, &mut mem);
+	mem.freeze()
+    }
+}
+
 impl<K, M> BKTree<K, M>
 where
     M: Metric<K>,
@@ -234,35 +272,6 @@ where
         M: Metric<Q>,
     {
         self.find(key, 0).next().map(|(_, found_key)| found_key)
-    }
-
-    /// [Future] Return (probably something like) a `Result<BytesBuffer>`, the serialized bytes representation of `self`.
-    ///
-    /// See: https://eli.thegreenplace.net/2011/09/29/an-interesting-tree-serialization-algorithm-from-dwarf#id3
-    ///
-    /// [I still do not know what this algorithm is called!]
-    ///
-    /// For now we call this `to_bytes`. This is just a stub to get the serialization stuff off the ground.
-    pub fn to_bytes(&self) -> Bytes {
-	let mut mem = BytesMut::new();
-	fn serialize<K> (node: &BKNode<K>, mem: &mut BytesMut) {
-	    if !node.children.is_empty() {
-		mem.put(&b"|0--<node.key>|CHILDREN_FOLLOW"[..]);
-		for (_dist, child_node) in node.children.iter() {
-		    serialize(child_node, mem);
-		}
-	    } else {
-		mem.put(&b"|0--<node.key>|END_CHILDREN"[..]);
-	    }
-	}
-	let root = match self.root.as_ref() {
-	    Some(node) => {
-		node
-	    }
-	    None => {return mem.freeze()}
-	};
-	serialize(&root, &mut mem);
-	mem.freeze()
     }
 }
 
@@ -462,21 +471,22 @@ mod tests {
 
     #[test]
     fn tree_serialize() {
-        let mut tree_before: BKTree<&str> = Default::default();
+	use BKTreeSerialize;
+        let mut tree_before: BKTree<String> = Default::default();
 
-        tree_before.add("book");
-        tree_before.add("books");
-        tree_before.add("cake");
-        tree_before.add("boo");
-        tree_before.add("cape");
-        tree_before.add("boon");
-        tree_before.add("cook");
-        tree_before.add("cart");
+        tree_before.add("book".to_string());
+        tree_before.add("books".to_string());
+        tree_before.add("cake".to_string());
+        tree_before.add("boo".to_string());
+        tree_before.add("cape".to_string());
+        tree_before.add("boon".to_string());
+        tree_before.add("cook".to_string());
+        tree_before.add("cart".to_string());
 
 	let serialized_bytes = tree_before.to_bytes();
 	assert!(serialized_bytes.len() > 0);
 
-        assert_eq_sorted(tree_before.find("caqe", 1), &[(1, "cake"), (1, "cape")]);
-        assert_eq_sorted(tree_before.find("cape", 1), &[(1, "cake"), (0, "cape")]);
+        assert_eq_sorted(tree_before.find("caqe", 1), &[(1, "cake".to_string()), (1, "cape".to_string())]);
+        assert_eq_sorted(tree_before.find("cape", 1), &[(1, "cake".to_string()), (0, "cape".to_string())]);
     }
 }
