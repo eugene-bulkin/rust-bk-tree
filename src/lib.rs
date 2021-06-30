@@ -12,9 +12,6 @@ extern crate fnv;
 #[cfg(feature = "enable-fnv")]
 use fnv::FnvHashMap;
 
-extern crate bytes;
-use bytes::{BytesMut, BufMut, Bytes};
-
 #[cfg(not(feature = "enable-fnv"))]
 use std::collections::HashMap;
 
@@ -100,41 +97,54 @@ pub struct BKTree<K, M = metrics::Levenshtein> {
     metric: M,
 }
 
-pub trait BKTreeSerialize {
-    fn to_bytes(&self) -> Bytes;
-}
+impl<M> BKTree<String, M> {
 
-impl BKTreeSerialize for BKTree<String> {
-    /// [Future] Return (probably something like) a `Result<BytesBuffer>`, the serialized bytes representation of `self`.
+    // Create a new BKTree instance using a serialized byte representation, `Vec<u8>`.
+    fn from_bytes(mem: Vec<u8>, metric: M) -> BKTree<String, M> {
+	let _ = mem;
+	// OOP! FIXME: We cannot serialize the metric, really, and we can't guarantee that this new
+	// BKTree will use the same one. If it's not the same one used to create the tree, we will
+	// Have the wrong distances...
+	// let tree = BKTree::new(metric);
+	// let root = BKNode::new("test".to_string());
+	// for key in vec![].iter() {
+	//     let child = BKNode::new("test".to_string());
+	//     root.add_child(dist, child);
+	// }
+	BKTree { root: None, metric }
+    }
+
+    /// Return a `Vec<u8>` of bytes, the serialized bytes representation of `self`.
     ///
     /// See: https://eli.thegreenplace.net/2011/09/29/an-interesting-tree-serialization-algorithm-from-dwarf
     ///
     /// [I still do not know what this algorithm is called!]
     ///
     /// For now we call this `to_bytes`. This is just a stub to get the serialization stuff off the ground.
-    fn to_bytes(&self) -> Bytes {
-	let mut mem = BytesMut::new();
-	fn serialize (node: &BKNode<String>, mem: &mut BytesMut) {
+    fn to_bytes(&self) -> Vec<u8> {
+	let mut mem: Vec<u8> = Vec::new();
+	fn serialize (pdist: u32, node: &BKNode<String>, mem: &mut Vec<u8>) {
+	    // The following append the node "data" (32-bit distance + literal bytes of key)
+	    mem.extend(&pdist.to_ne_bytes());
+	    mem.extend(&(node.key.clone().into_bytes())[..]);
 	    if !node.children.is_empty() {
-		mem.put(&(node.key.clone().into_bytes())[..]);
-		mem.put_u8(b'v');
-		for (_dist, child_node) in node.children.iter() {
-		    serialize(child_node, mem);
-		    mem.put_u8(b'>');
+		mem.push(b'v'); // children follow
+		for (dist, child_node) in node.children.iter() {
+		    serialize(*dist, child_node, mem);
 		}
+		mem.push(b'<'); // end children
 	    } else {
-		mem.put(&(node.key.clone().into_bytes())[..]);
-		mem.put_u8(b'>');
+		mem.push(b'>'); // siblings follow
 	    }
 	}
 	let root = match self.root.as_ref() {
 	    Some(node) => {
 		node
 	    }
-	    None => {return mem.freeze()}
+	    None => {return mem}
 	};
-	serialize(&root, &mut mem);
-	mem.freeze()
+	serialize(0, &root, &mut mem);
+	mem
     }
 }
 
@@ -352,6 +362,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use metrics;
     use std::fmt::Debug;
     use {BKNode, BKTree};
 
@@ -471,7 +482,6 @@ mod tests {
 
     #[test]
     fn tree_serialize() {
-	use BKTreeSerialize;
         let mut tree_before: BKTree<String> = Default::default();
 
         tree_before.add("book".to_string());
@@ -484,7 +494,9 @@ mod tests {
         tree_before.add("cart".to_string());
 
 	let serialized_bytes = tree_before.to_bytes();
-	assert!(serialized_bytes.len() > 0);
+	let _ = BKTree::from_bytes(serialized_bytes, metrics::Levenshtein);
+	// println!("literal bytes: {}", String::from_utf8(serialized_bytes.clone()).unwrap());
+	// assert!(serialized_bytes.len() > 0);
 
         assert_eq_sorted(tree_before.find("caqe", 1), &[(1, "cake".to_string()), (1, "cape".to_string())]);
         assert_eq_sorted(tree_before.find("cape", 1), &[(1, "cake".to_string()), (0, "cape".to_string())]);

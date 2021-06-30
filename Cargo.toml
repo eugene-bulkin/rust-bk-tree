@@ -13,7 +13,6 @@ keywords = ["fuzzy", "search", "BK-tree"]
 categories = ["data-structures", "text-processing"]
 
 [dependencies]
-bytes = "1.0.1"
 fnv = { version = "1.0.7", optional = true }
 triple_accel = "0.3.4"
 
