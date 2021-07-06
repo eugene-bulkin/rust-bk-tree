@@ -239,6 +239,27 @@ where
     }
 }
 
+#[cfg(feature = "serde-support")]
+impl<K, M> BKTree<K, M>
+where
+    M: Metric<K>,
+    K: serde::Serialize,
+{
+    pub fn to_vec(&self) -> Result<Vec<u8>, &str> {
+	match &self.root {
+	    Some(node) => {
+		match serde_cbor::to_vec(node) {
+		    Ok(bytes) => { return Ok(bytes) },
+		    Err(e) => { return Err("some other err") }
+		}
+	    },
+	    None => {
+		return Err("foo");
+	    }
+	};
+    }
+}
+
 impl<K, M: Metric<K>> Extend<K> for BKTree<K, M> {
     /// Adds multiple keys to the tree.
     ///
