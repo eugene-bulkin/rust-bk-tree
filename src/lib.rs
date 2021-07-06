@@ -318,6 +318,8 @@ where
 mod tests {
     use std::fmt::Debug;
     use {BKNode, BKTree};
+    #[cfg(feature = "serde_x")]
+    extern crate serde_cbor;
 
     fn assert_eq_sorted<'t, T: 't, I>(left: I, right: &[(u32, T)])
     where
@@ -443,9 +445,6 @@ mod tests {
         assert_eq!(tree.find_exact("cape"), Some(&"cape"));
         assert_eq!(tree.find_exact("book"), Some(&"book"));
     }
-
-    #[cfg(feature = "serde_x")]
-    extern crate serde_cbor;
 
     #[cfg(feature = "serde_x")]
     #[test]
