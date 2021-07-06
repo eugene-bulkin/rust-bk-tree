@@ -15,6 +15,8 @@ use fnv::FnvHashMap;
 #[cfg(not(feature = "enable-fnv"))]
 use std::collections::HashMap;
 
+extern crate serde_derive;
+use serde_derive::{Serialize, Deserialize};
 
 /// A trait for a *metric* (distance function).
 ///
@@ -32,15 +34,16 @@ pub trait Metric<K: ?Sized> {
 }
 
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
+#[derive(Serialize, Deserialize)]
 struct BKNode<K> {
     /// The key determining the node.
     key: K,
     /// A hash-map of children, indexed by their distance from this node based
     /// on the metric being used by the tree.
     #[cfg(feature = "enable-fnv")]
-    children: FnvHashMap<u32, BKNode<K>>,
+    children: FnvHashMap<u32, Box<BKNode<K>>>,
     #[cfg(not(feature = "enable-fnv"))]
-    children: HashMap<u32, BKNode<K>>,
+    children: HashMap<u32, Box<BKNode<K>>>,
     max_child_distance: Option<u32>,
 }
 
@@ -73,7 +76,7 @@ impl<K> BKNode<K> {
     /// foo.add_child(1, "fop");
     /// ```
     pub fn add_child(&mut self, distance: u32, key: K) {
-        self.children.insert(distance, BKNode::new(key));
+        self.children.insert(distance, Box::new(BKNode::new(key)));
         self.max_child_distance = self.max_child_distance.max(Some(distance));
     }
 }
