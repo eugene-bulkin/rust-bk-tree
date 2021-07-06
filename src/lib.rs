@@ -335,8 +335,8 @@ mod tests {
 
     fn assert_serde_roundtrip(before: BKNode<&str>) {
         let bytes: Vec<u8> = to_vec(&before).unwrap();
-        let after: BKNode<&str> = from_slice(&bytes[..]).unwrap();
-        // Actually, it's before -> after -> after_again, because it's easier to compare two `Vec<u8>`
+        assert!(bytes.len() > 0);
+        let after: BKNode<&str> = from_slice(&bytes).unwrap();
         let bytes_after: Vec<u8> = to_vec(&after).unwrap();
         assert_eq!(&bytes[..], &bytes_after[..]);
     }
@@ -443,7 +443,28 @@ mod tests {
 
     #[test]
     fn tree_serde() {
-        let node: BKNode<&str> = BKNode::new("foo");
+        let node: BKNode<&str> = BKNode::new("");
         assert_serde_roundtrip(node);
+
+        let mut tree: BKTree<&str> = Default::default();
+        tree.add("book");
+        tree.add("books");
+        tree.add("cake");
+        tree.add("boo");
+        tree.add("cape");
+        tree.add("boon");
+        tree.add("cook");
+        tree.add("cart");
+        assert_serde_roundtrip(tree.root.unwrap());
+
+        // FIXME: Uncomment below when dups problem is resolved.
+        // let mut tree1: BKTree<&str> = Default::default();
+        // tree1.add("book");
+        // let mut tree2: BKTree<&str> = Default::default();
+        // tree2.add("book");
+        // tree2.add("book");
+        // let bytes1: Vec<u8> = to_vec(&tree1.root.unwrap()).unwrap();
+        // let bytes2: Vec<u8> = to_vec(&tree2.root.unwrap()).unwrap();
+        // assert_eq!(bytes1, bytes2);
     }
 }
