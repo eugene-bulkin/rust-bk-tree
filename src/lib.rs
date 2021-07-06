@@ -338,7 +338,7 @@ mod tests {
 
     #[cfg(feature = "serde-support")]
     fn assert_serde_roundtrip(before: &BKNode<&str>) {
-	use tests::serde_cbor::{to_vec, from_slice};
+        use tests::serde_cbor::{to_vec, from_slice};
         let bytes: Vec<u8> = to_vec(&before).unwrap();
         assert!(bytes.len() > 0);
         let after: BKNode<&str> = from_slice(&bytes).unwrap();
@@ -449,7 +449,7 @@ mod tests {
     #[cfg(feature = "serde-support")]
     #[test]
     fn tree_serde() {
-	use self::serde_cbor::to_vec;
+        use self::serde_cbor::to_vec;
 
         let node: BKNode<&str> = BKNode::new("");
         assert_serde_roundtrip(&node);
@@ -476,12 +476,12 @@ mod tests {
         tree_same.add("cart");
         assert_serde_roundtrip(&tree_same.root.as_ref().unwrap());
 
-	// Two trees built using the same operations should be the same.
+        // Two trees built using the same operations should be the same.
         let bytes: Vec<u8> = to_vec(&tree.root).unwrap();
         let bytes_same: Vec<u8> = to_vec(&tree_same.root).unwrap();
         assert_eq!(bytes, bytes_same);
 
-	// FIXME: Changing insertion order of the above 2nd tree _does_ change the result. Do we care?
+        // FIXME: Changing insertion order of the above 2nd tree _does_ change the result. Do we care?
 
         // FIXME: Uncomment below when dups problem is resolved.
         // let mut tree1: BKTree<&str> = Default::default();
