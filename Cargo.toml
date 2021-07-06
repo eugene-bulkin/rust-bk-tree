@@ -25,4 +25,4 @@ rand = "0.3"
 [features]
 default = ["enable-fnv"]
 enable-fnv = ["fnv"]
-serde_x = ["serde", "serde_cbor", "serde_derive"]
+serde-support = ["serde", "serde_cbor", "serde_derive"]

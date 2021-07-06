@@ -15,9 +15,9 @@ use fnv::FnvHashMap;
 #[cfg(not(feature = "enable-fnv"))]
 use std::collections::HashMap;
 
-#[cfg(feature = "serde_x")]
+#[cfg(feature = "serde-support")]
 extern crate serde_derive;
-#[cfg(feature = "serde_x")]
+#[cfg(feature = "serde-support")]
 use serde_derive::{Serialize, Deserialize};
 
 /// A trait for a *metric* (distance function).
@@ -36,7 +36,7 @@ pub trait Metric<K: ?Sized> {
 }
 
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
-#[cfg_attr(feature = "serde_x", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 struct BKNode<K> {
     /// The key determining the node.
     key: K,
@@ -318,7 +318,7 @@ where
 mod tests {
     use std::fmt::Debug;
     use {BKNode, BKTree};
-    #[cfg(feature = "serde_x")]
+    #[cfg(feature = "serde-support")]
     extern crate serde_cbor;
 
     fn assert_eq_sorted<'t, T: 't, I>(left: I, right: &[(u32, T)])
@@ -336,7 +336,7 @@ mod tests {
     }
 
 
-    #[cfg(feature = "serde_x")]
+    #[cfg(feature = "serde-support")]
     fn assert_serde_roundtrip(before: &BKNode<&str>) {
 	use tests::serde_cbor::{to_vec, from_slice};
         let bytes: Vec<u8> = to_vec(&before).unwrap();
@@ -446,10 +446,11 @@ mod tests {
         assert_eq!(tree.find_exact("book"), Some(&"book"));
     }
 
-    #[cfg(feature = "serde_x")]
+    #[cfg(feature = "serde-support")]
     #[test]
     fn tree_serde() {
 	use self::serde_cbor::to_vec;
+
         let node: BKNode<&str> = BKNode::new("");
         assert_serde_roundtrip(&node);
 
