@@ -457,6 +457,24 @@ mod tests {
         tree.add("cart");
         assert_serde_roundtrip(&tree.root.as_ref().unwrap());
 
+        let mut tree_same: BKTree<&str> = Default::default();
+        tree_same.add("book");
+        tree_same.add("books");
+        tree_same.add("cake");
+        tree_same.add("boo");
+        tree_same.add("cape");
+        tree_same.add("boon");
+        tree_same.add("cook");
+        tree_same.add("cart");
+        assert_serde_roundtrip(&tree_same.root.as_ref().unwrap());
+
+	// Two trees built using the same operations should be the same.
+        let bytes: Vec<u8> = to_vec(&tree.root).unwrap();
+        let bytes_same: Vec<u8> = to_vec(&tree_same.root).unwrap();
+        assert_eq!(bytes, bytes_same);
+
+	// FIXME: Changing insertion order of the above 2nd tree _does_ change the result. Do we care?
+
         // FIXME: Uncomment below when dups problem is resolved.
         // let mut tree1: BKTree<&str> = Default::default();
         // tree1.add("book");
