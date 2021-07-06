@@ -333,7 +333,7 @@ mod tests {
         assert_eq!(left_mut, right_mut);
     }
 
-    fn assert_serde_roundtrip(before: BKNode<&str>) {
+    fn assert_serde_roundtrip(before: &BKNode<&str>) {
         let bytes: Vec<u8> = to_vec(&before).unwrap();
         assert!(bytes.len() > 0);
         let after: BKNode<&str> = from_slice(&bytes).unwrap();
@@ -444,7 +444,7 @@ mod tests {
     #[test]
     fn tree_serde() {
         let node: BKNode<&str> = BKNode::new("");
-        assert_serde_roundtrip(node);
+        assert_serde_roundtrip(&node);
 
         let mut tree: BKTree<&str> = Default::default();
         tree.add("book");
@@ -455,7 +455,7 @@ mod tests {
         tree.add("boon");
         tree.add("cook");
         tree.add("cart");
-        assert_serde_roundtrip(tree.root.unwrap());
+        assert_serde_roundtrip(&tree.root.as_ref().unwrap());
 
         // FIXME: Uncomment below when dups problem is resolved.
         // let mut tree1: BKTree<&str> = Default::default();
