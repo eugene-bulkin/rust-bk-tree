@@ -316,6 +316,8 @@ where
 mod tests {
     use std::fmt::Debug;
     use {BKNode, BKTree};
+    extern crate serde_cbor;
+    use self::serde_cbor::{to_vec, from_slice};
 
     fn assert_eq_sorted<'t, T: 't, I>(left: I, right: &[(u32, T)])
     where
@@ -329,6 +331,14 @@ mod tests {
         right_mut.sort();
 
         assert_eq!(left_mut, right_mut);
+    }
+
+    fn assert_serde_roundtrip(before: BKNode<&str>) {
+        let bytes: Vec<u8> = to_vec(&before).unwrap();
+        let after: BKNode<&str> = from_slice(&bytes[..]).unwrap();
+        // Actually, it's before -> after -> after_again, because it's easier to compare two `Vec<u8>`
+        let bytes_after: Vec<u8> = to_vec(&after).unwrap();
+        assert_eq!(&bytes[..], &bytes_after[..]);
     }
 
     #[test]
@@ -429,5 +439,11 @@ mod tests {
         assert_eq!(tree.find_exact("caqe"), None);
         assert_eq!(tree.find_exact("cape"), Some(&"cape"));
         assert_eq!(tree.find_exact("book"), Some(&"book"));
+    }
+
+    #[test]
+    fn tree_serde() {
+        let node: BKNode<&str> = BKNode::new("foo");
+        assert_serde_roundtrip(node);
     }
 }
