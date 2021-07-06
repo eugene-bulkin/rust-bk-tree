@@ -243,20 +243,22 @@ where
 impl<K, M> BKTree<K, M>
 where
     M: Metric<K>,
-    K: serde::Serialize,
+    K: serde::Serialize + serde::Deserialize<'static>,
 {
-    pub fn to_vec(&self) -> Result<Vec<u8>, &str> {
+    pub fn to_vec(&self) -> Result<Option<Vec<u8>>, serde_cbor::error::Error> {
 	match &self.root {
 	    Some(node) => {
-		match serde_cbor::to_vec(node) {
-		    Ok(bytes) => { return Ok(bytes) },
-		    Err(e) => { return Err("some other err") }
-		}
+		let bytes = serde_cbor::to_vec(node)?;
+		return Ok(Some(bytes));
 	    },
 	    None => {
-		return Err("foo");
-	    }
-	};
+		return Ok(None);
+	    },
+	}
+    }
+
+    pub fn from_slice(slice: &'static [u8], metric: M) -> Result<BKTree<K, M>, serde_cbor::error::Error> {
+	Ok(BKTree{ metric, root: serde_cbor::from_slice(&slice)? })
     }
 }
 
