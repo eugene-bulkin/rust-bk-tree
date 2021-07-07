@@ -86,13 +86,34 @@ impl<K> BKNode<K>
 where
     K: serde::Serialize + serde::de::DeserializeOwned,
 {
-    /// Recursively serialize a `BKNode` using [CBOR](https://en.wikipedia.org/wiki/CBOR),
-    /// returning the resulting bytes as `Vec<u8>`
+    /// Recursively serialize a `BKNode` using
+    /// [CBOR](https://en.wikipedia.org/wiki/CBOR),
+    /// returning the resulting bytes as `Vec<u8>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bk_tree::{BKTree, metrics};
+    ///
+    /// let mut tree: BKTree<String> = BKTree::new(metrics::Levenshtein);
+    /// tree.add("rust".to_string());
+    /// let serialized = &tree.root.unwrap().to_vec();
+    /// ```
     pub fn to_vec(&self) -> Result<Vec<u8>, serde_cbor::error::Error> {
         Ok(serde_cbor::to_vec(self)?)
     }
 
-    /// Deserialize a slice of `u8` into a returned `BKNode`
+    /// Deserialize a slice of `u8` into a returned `BKNode`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bk_tree::BKNode;
+    ///
+    /// let node = BKNode::new("box".to_string());
+    /// let serialized = &node.to_vec().unwrap();
+    /// let deserialized: BKNode<String> = BKNode::from_slice(serialized).unwrap();
+    /// ```
     pub fn from_slice<'a>(slice: &'a [u8]) -> Result<BKNode<K>, serde_cbor::error::Error> {
         let result: BKNode<K> = serde_cbor::from_slice(slice)?;
         Ok(result)
