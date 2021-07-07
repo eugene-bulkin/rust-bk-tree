@@ -86,10 +86,13 @@ impl<K> BKNode<K>
 where
     K: serde::Serialize + serde::de::DeserializeOwned,
 {
+    /// Recursively serialize a `BKNode` using [CBOR](https://en.wikipedia.org/wiki/CBOR),
+    /// returning the resulting bytes as `Vec<u8>`
     pub fn to_vec(&self) -> Result<Vec<u8>, serde_cbor::error::Error> {
         Ok(serde_cbor::to_vec(self)?)
     }
 
+    /// Deserialize a slice of `u8` into a returned `BKNode`
     pub fn from_slice<'a>(slice: &'a [u8]) -> Result<BKNode<K>, serde_cbor::error::Error> {
         let result: BKNode<K> = serde_cbor::from_slice(slice)?;
         Ok(result)
@@ -487,7 +490,6 @@ mod tests {
         tree_same.add("cook".to_string());
         tree_same.add("cart".to_string());
         let tree_same_root = tree_same.root.unwrap();
-        assert_serde_roundtrip(&tree_same_root);
 
         // Two trees built using the same operations should be the same.
         let bytes:      Vec<u8> = tree_root     .to_vec().unwrap();
