@@ -109,7 +109,7 @@ where
 #[derive(Debug)]
 pub struct BKTree<K, M = metrics::Levenshtein> {
     /// The root node. May be empty if nothing has been put in the tree yet.
-    root: Option<BKNode<K>>,
+    pub root: Option<BKNode<K>>,
     /// The metric being used to determine the distance between nodes on the
     /// tree.
     metric: M,
