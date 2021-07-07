@@ -494,8 +494,17 @@ mod tests {
         let bytes_same: Vec<u8> = tree_same_root.to_vec().unwrap();
         assert_eq!(bytes, bytes_same);
 
+        // Ensure that we can use `serde_cbor` functions directly.
+        let mut tree: BKTree<String> = Default::default();
+        tree.add("cereal".to_string());
+        let bytes = serde_cbor::to_vec(&tree.root.unwrap()).unwrap();
+        let node: BKNode<String> = serde_cbor::from_slice(&bytes).unwrap();
+        let mut new_tree: BKTree<String> = BKTree::default();
+        new_tree.root = Some(node);
+        assert_eq_sorted(new_tree.find("cereal", 0), &[(0, "cereal".to_string())]);
+
         // More tests?
-	//   * Changing insertion order of the above 2nd tree _does_ change the result. We should be able to scramble
-	//     the order of insertions for `tree_same` above and get the same serialization.
+        //   * Changing insertion order of the above 2nd tree _does_ change the result. We should be able to scramble
+        //     the order of insertions for `tree_same` above and get the same serialization.
     }
 }
