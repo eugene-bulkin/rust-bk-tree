@@ -17,8 +17,6 @@ use std::collections::HashMap;
 
 #[cfg(feature = "serde-support")]
 extern crate serde_derive;
-#[cfg(feature = "serde-support")]
-use serde_derive::{Serialize, Deserialize};
 
 /// A trait for a *metric* (distance function).
 ///
@@ -36,7 +34,7 @@ pub trait Metric<K: ?Sized> {
 }
 
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
-#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-support", derive(serde_derive::Serialize, serde_derive::Deserialize))]
 struct BKNode<K> {
     /// The key determining the node.
     key: K,
