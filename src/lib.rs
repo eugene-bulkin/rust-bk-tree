@@ -83,6 +83,21 @@ impl<K> BKNode<K> {
     }
 }
 
+#[cfg(feature = "serde-support")]
+impl<K> BKNode<K>
+where
+    K: serde::Serialize + serde::de::DeserializeOwned,
+{
+    fn to_vec(&self) -> Result<Vec<u8>, serde_cbor::error::Error> {
+	Ok(serde_cbor::to_vec(self)?)
+    }
+
+    fn from_slice<'a>(slice: &'a [u8]) -> Result<BKNode<K>, serde_cbor::error::Error> {
+	let result: BKNode<K> = serde_cbor::from_slice(slice)?;
+	Ok(result)
+    }
+}
+
 impl<K> Debug for BKNode<K>
 where
     K: Debug,
@@ -239,29 +254,6 @@ where
     }
 }
 
-#[cfg(feature = "serde-support")]
-impl<K, M> BKTree<K, M>
-where
-    M: Metric<K>,
-    K: serde::Serialize + serde::de::DeserializeOwned,
-{
-    pub fn to_vec(&self) -> Result<Option<Vec<u8>>, serde_cbor::error::Error> {
-	match &self.root {
-	    Some(node) => {
-		let bytes = serde_cbor::to_vec(node)?;
-		return Ok(Some(bytes));
-	    },
-	    None => {
-		return Ok(None);
-	    },
-	}
-    }
-
-    pub fn from_slice<'a>(slice: &'a [u8], metric: M) -> Result<BKTree<K, M>, serde_cbor::error::Error> {
-	Ok(BKTree{ metric, root: serde_cbor::from_slice(slice)? })
-    }
-}
-
 impl<K, M: Metric<K>> Extend<K> for BKTree<K, M> {
     /// Adds multiple keys to the tree.
     ///
@@ -360,12 +352,11 @@ mod tests {
 
 
     #[cfg(feature = "serde-support")]
-    fn assert_serde_roundtrip<T: serde::Serialize + serde::de::DeserializeOwned>(before: &BKNode<T>) {
-        use tests::serde_cbor::{to_vec, from_slice};
-        let bytes: Vec<u8> = to_vec(&before).unwrap();
+    fn assert_serde_roundtrip<K: serde::Serialize + serde::de::DeserializeOwned>(before: &BKNode<K>) {
+        let bytes: Vec<u8> = before.to_vec().unwrap();
         assert!(bytes.len() > 0);
-        let after: BKNode<T> = from_slice(&bytes).unwrap();
-        let bytes_after: Vec<u8> = to_vec(&after).unwrap();
+        let after: BKNode<K> = BKNode::from_slice(&bytes).unwrap();
+        let bytes_after: Vec<u8> = after.to_vec().unwrap();
         assert_eq!(&bytes[..], &bytes_after[..]);
     }
 
@@ -472,10 +463,9 @@ mod tests {
     #[cfg(feature = "serde-support")]
     #[test]
     fn tree_serde() {
-        use self::serde_cbor::to_vec;
-
-        let node: BKNode<String> = BKNode::new("".to_string());
-        assert_serde_roundtrip(&node);
+	let mut tree: BKTree<String> = BKTree::default();
+        tree.add("".to_string());
+        assert_serde_roundtrip(&tree.root.unwrap());
 
         let mut tree: BKTree<String> = Default::default();
         tree.add("book".to_string());
@@ -486,7 +476,8 @@ mod tests {
         tree.add("boon".to_string());
         tree.add("cook".to_string());
         tree.add("cart".to_string());
-        assert_serde_roundtrip(&tree.root.as_ref().unwrap());
+	let tree_root = tree.root.unwrap();
+        assert_serde_roundtrip(&tree_root);
 
         let mut tree_same: BKTree<String> = Default::default();
         tree_same.add("book".to_string());
@@ -497,11 +488,12 @@ mod tests {
         tree_same.add("boon".to_string());
         tree_same.add("cook".to_string());
         tree_same.add("cart".to_string());
-        assert_serde_roundtrip(&tree_same.root.as_ref().unwrap());
+	let tree_same_root = tree_same.root.unwrap();
+        assert_serde_roundtrip(&tree_same_root);
 
         // Two trees built using the same operations should be the same.
-        let bytes:      Vec<u8> = to_vec(&tree.root     ).unwrap();
-        let bytes_same: Vec<u8> = to_vec(&tree_same.root).unwrap();
+        let bytes:      Vec<u8> = tree_root     .to_vec().unwrap();
+        let bytes_same: Vec<u8> = tree_same_root.to_vec().unwrap();
         assert_eq!(bytes, bytes_same);
 
         // FIXME: Changing insertion order of the above 2nd tree _does_ change the result. Do we care?
