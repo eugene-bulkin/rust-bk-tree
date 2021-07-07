@@ -360,11 +360,11 @@ mod tests {
 
 
     #[cfg(feature = "serde-support")]
-    fn assert_serde_roundtrip(before: &BKNode<&str>) {
+    fn assert_serde_roundtrip<'t, T: serde::Serialize + serde::Deserialize<'t>>(before: &BKNode<T>) {
         use tests::serde_cbor::{to_vec, from_slice};
         let bytes: Vec<u8> = to_vec(&before).unwrap();
         assert!(bytes.len() > 0);
-        let after: BKNode<&str> = from_slice(&bytes).unwrap();
+        let after: BKNode<T> = from_slice(&bytes).unwrap();
         let bytes_after: Vec<u8> = to_vec(&after).unwrap();
         assert_eq!(&bytes[..], &bytes_after[..]);
     }
@@ -477,30 +477,30 @@ mod tests {
         let node: BKNode<&str> = BKNode::new("");
         assert_serde_roundtrip(&node);
 
-        let mut tree: BKTree<&str> = Default::default();
-        tree.add("book");
-        tree.add("books");
-        tree.add("cake");
-        tree.add("boo");
-        tree.add("cape");
-        tree.add("boon");
-        tree.add("cook");
-        tree.add("cart");
+        let mut tree: BKTree<String> = Default::default();
+        tree.add("book".to_string());
+        tree.add("books".to_string());
+        tree.add("cake".to_string());
+        tree.add("boo".to_string());
+        tree.add("cape".to_string());
+        tree.add("boon".to_string());
+        tree.add("cook".to_string());
+        tree.add("cart".to_string());
         assert_serde_roundtrip(&tree.root.as_ref().unwrap());
 
-        let mut tree_same: BKTree<&str> = Default::default();
-        tree_same.add("book");
-        tree_same.add("books");
-        tree_same.add("cake");
-        tree_same.add("boo");
-        tree_same.add("cape");
-        tree_same.add("boon");
-        tree_same.add("cook");
-        tree_same.add("cart");
+        let mut tree_same: BKTree<String> = Default::default();
+        tree_same.add("book".to_string());
+        tree_same.add("books".to_string());
+        tree_same.add("cake".to_string());
+        tree_same.add("boo".to_string());
+        tree_same.add("cape".to_string());
+        tree_same.add("boon".to_string());
+        tree_same.add("cook".to_string());
+        tree_same.add("cart".to_string());
         assert_serde_roundtrip(&tree_same.root.as_ref().unwrap());
 
         // Two trees built using the same operations should be the same.
-        let bytes: Vec<u8> = to_vec(&tree.root).unwrap();
+        let bytes:      Vec<u8> = to_vec(&tree.root     ).unwrap();
         let bytes_same: Vec<u8> = to_vec(&tree_same.root).unwrap();
         assert_eq!(bytes, bytes_same);
 
