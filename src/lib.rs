@@ -525,11 +525,11 @@ mod tests {
         let mut new_tree: BKTree<String> = BKTree::default();
         new_tree.root = Some(node);
         assert_eq_sorted(new_tree.find("cereal", 0),
-			 &[(0, "cereal".to_string())]);
+                         &[(0, "cereal".to_string())]);
 
         // More tests?
         //   * Changing insertion order of the above 2nd tree changes the
-	//     serialization output. We should be able to scramble the order of
-	//     insertions for `tree_same` above and get the same serialization.
+        //     serialization output. We should be able to scramble the order of
+        //     insertions for `tree_same` above and get the same serialization.
     }
 }
