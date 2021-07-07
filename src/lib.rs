@@ -243,7 +243,7 @@ where
 impl<K, M> BKTree<K, M>
 where
     M: Metric<K>,
-    K: serde::Serialize + for <'de> serde::Deserialize<'de>,
+    K: serde::Serialize + serde::de::DeserializeOwned,
 {
     pub fn to_vec(&self) -> Result<Option<Vec<u8>>, serde_cbor::error::Error> {
 	match &self.root {
@@ -360,7 +360,7 @@ mod tests {
 
 
     #[cfg(feature = "serde-support")]
-    fn assert_serde_roundtrip<'t, T: serde::Serialize + serde::Deserialize<'t>>(before: &BKNode<T>) {
+    fn assert_serde_roundtrip<T: serde::Serialize + serde::de::DeserializeOwned>(before: &BKNode<T>) {
         use tests::serde_cbor::{to_vec, from_slice};
         let bytes: Vec<u8> = to_vec(&before).unwrap();
         assert!(bytes.len() > 0);
@@ -474,7 +474,7 @@ mod tests {
     fn tree_serde() {
         use self::serde_cbor::to_vec;
 
-        let node: BKNode<&str> = BKNode::new("");
+        let node: BKNode<String> = BKNode::new("".to_string());
         assert_serde_roundtrip(&node);
 
         let mut tree: BKTree<String> = Default::default();
