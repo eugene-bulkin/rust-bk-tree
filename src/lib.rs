@@ -243,7 +243,7 @@ where
 impl<K, M> BKTree<K, M>
 where
     M: Metric<K>,
-    K: serde::Serialize + serde::Deserialize<'static>,
+    K: serde::Serialize + for <'de> serde::Deserialize<'de>,
 {
     pub fn to_vec(&self) -> Result<Option<Vec<u8>>, serde_cbor::error::Error> {
 	match &self.root {
@@ -257,8 +257,8 @@ where
 	}
     }
 
-    pub fn from_slice(slice: &'static [u8], metric: M) -> Result<BKTree<K, M>, serde_cbor::error::Error> {
-	Ok(BKTree{ metric, root: serde_cbor::from_slice(&slice)? })
+    pub fn from_slice<'a>(slice: &'a [u8], metric: M) -> Result<BKTree<K, M>, serde_cbor::error::Error> {
+	Ok(BKTree{ metric, root: serde_cbor::from_slice(slice)? })
     }
 }
 
