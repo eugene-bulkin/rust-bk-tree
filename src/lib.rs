@@ -35,7 +35,7 @@ pub trait Metric<K: ?Sized> {
 
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
 #[cfg_attr(feature = "serde-support", derive(serde_derive::Serialize, serde_derive::Deserialize))]
-struct BKNode<K> {
+pub struct BKNode<K> {
     /// The key determining the node.
     key: K,
     /// A hash-map of children, indexed by their distance from this node based
@@ -86,13 +86,13 @@ impl<K> BKNode<K>
 where
     K: serde::Serialize + serde::de::DeserializeOwned,
 {
-    fn to_vec(&self) -> Result<Vec<u8>, serde_cbor::error::Error> {
-	Ok(serde_cbor::to_vec(self)?)
+    pub fn to_vec(&self) -> Result<Vec<u8>, serde_cbor::error::Error> {
+        Ok(serde_cbor::to_vec(self)?)
     }
 
-    fn from_slice<'a>(slice: &'a [u8]) -> Result<BKNode<K>, serde_cbor::error::Error> {
-	let result: BKNode<K> = serde_cbor::from_slice(slice)?;
-	Ok(result)
+    pub fn from_slice<'a>(slice: &'a [u8]) -> Result<BKNode<K>, serde_cbor::error::Error> {
+        let result: BKNode<K> = serde_cbor::from_slice(slice)?;
+        Ok(result)
     }
 }
 
@@ -461,7 +461,7 @@ mod tests {
     #[cfg(feature = "serde-support")]
     #[test]
     fn tree_serde() {
-	let mut tree: BKTree<String> = BKTree::default();
+        let mut tree: BKTree<String> = BKTree::default();
         tree.add("".to_string());
         assert_serde_roundtrip(&tree.root.unwrap());
 
@@ -474,7 +474,7 @@ mod tests {
         tree.add("boon".to_string());
         tree.add("cook".to_string());
         tree.add("cart".to_string());
-	let tree_root = tree.root.unwrap();
+        let tree_root = tree.root.unwrap();
         assert_serde_roundtrip(&tree_root);
 
         let mut tree_same: BKTree<String> = Default::default();
@@ -486,7 +486,7 @@ mod tests {
         tree_same.add("boon".to_string());
         tree_same.add("cook".to_string());
         tree_same.add("cart".to_string());
-	let tree_same_root = tree_same.root.unwrap();
+        let tree_same_root = tree_same.root.unwrap();
         assert_serde_roundtrip(&tree_same_root);
 
         // Two trees built using the same operations should be the same.
