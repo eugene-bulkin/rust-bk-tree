@@ -494,16 +494,8 @@ mod tests {
         let bytes_same: Vec<u8> = tree_same_root.to_vec().unwrap();
         assert_eq!(bytes, bytes_same);
 
-        // FIXME: Changing insertion order of the above 2nd tree _does_ change the result. Do we care?
-
-        // FIXME: Uncomment below when dups problem is resolved.
-        // let mut tree1: BKTree<&str> = Default::default();
-        // tree1.add("book");
-        // let mut tree2: BKTree<&str> = Default::default();
-        // tree2.add("book");
-        // tree2.add("book");
-        // let bytes1: Vec<u8> = to_vec(&tree1.root.unwrap()).unwrap();
-        // let bytes2: Vec<u8> = to_vec(&tree2.root.unwrap()).unwrap();
-        // assert_eq!(bytes1, bytes2);
+        // More tests?
+	//   * Changing insertion order of the above 2nd tree _does_ change the result. We should be able to scramble
+	//     the order of insertions for `tree_same` above and get the same serialization.
     }
 }
