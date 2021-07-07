@@ -15,6 +15,8 @@ use fnv::FnvHashMap;
 #[cfg(not(feature = "enable-fnv"))]
 use std::collections::HashMap;
 
+#[cfg(feature = "serde-support")]
+extern crate serde_derive;
 
 /// A trait for a *metric* (distance function).
 ///
@@ -32,15 +34,16 @@ pub trait Metric<K: ?Sized> {
 }
 
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
-struct BKNode<K> {
+#[cfg_attr(feature = "serde-support", derive(serde_derive::Serialize, serde_derive::Deserialize))]
+pub struct BKNode<K> {
     /// The key determining the node.
     key: K,
     /// A hash-map of children, indexed by their distance from this node based
     /// on the metric being used by the tree.
     #[cfg(feature = "enable-fnv")]
-    children: FnvHashMap<u32, BKNode<K>>,
+    children: FnvHashMap<u32, Box<BKNode<K>>>,
     #[cfg(not(feature = "enable-fnv"))]
-    children: HashMap<u32, BKNode<K>>,
+    children: HashMap<u32, Box<BKNode<K>>>,
     max_child_distance: Option<u32>,
 }
 
@@ -73,8 +76,47 @@ impl<K> BKNode<K> {
     /// foo.add_child(1, "fop");
     /// ```
     pub fn add_child(&mut self, distance: u32, key: K) {
-        self.children.insert(distance, BKNode::new(key));
+        self.children.insert(distance, Box::new(BKNode::new(key)));
         self.max_child_distance = self.max_child_distance.max(Some(distance));
+    }
+}
+
+#[cfg(feature = "serde-support")]
+impl<K> BKNode<K>
+where
+    K: serde::Serialize + serde::de::DeserializeOwned,
+{
+    /// Recursively serialize a `BKNode` using
+    /// [CBOR](https://en.wikipedia.org/wiki/CBOR),
+    /// returning the resulting bytes as `Vec<u8>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bk_tree::{BKTree, metrics};
+    ///
+    /// let mut tree: BKTree<String> = BKTree::new(metrics::Levenshtein);
+    /// tree.add("rust".to_string());
+    /// let serialized = &tree.root.unwrap().to_vec();
+    /// ```
+    pub fn to_vec(&self) -> Result<Vec<u8>, serde_cbor::error::Error> {
+        Ok(serde_cbor::to_vec(self)?)
+    }
+
+    /// Deserialize a slice of `u8` into a returned `BKNode`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bk_tree::BKNode;
+    ///
+    /// let node = BKNode::new("box".to_string());
+    /// let serialized = &node.to_vec().unwrap();
+    /// let deserialized: BKNode<String> = BKNode::from_slice(serialized).unwrap();
+    /// ```
+    pub fn from_slice<'a>(slice: &'a [u8]) -> Result<BKNode<K>, serde_cbor::error::Error> {
+        let result: BKNode<K> = serde_cbor::from_slice(slice)?;
+        Ok(result)
     }
 }
 
@@ -91,7 +133,7 @@ where
 #[derive(Debug)]
 pub struct BKTree<K, M = metrics::Levenshtein> {
     /// The root node. May be empty if nothing has been put in the tree yet.
-    root: Option<BKNode<K>>,
+    pub root: Option<BKNode<K>>,
     /// The metric being used to determine the distance between nodes on the
     /// tree.
     metric: M,
@@ -313,6 +355,8 @@ where
 mod tests {
     use std::fmt::Debug;
     use {BKNode, BKTree};
+    #[cfg(feature = "serde-support")]
+    extern crate serde_cbor;
 
     fn assert_eq_sorted<'t, T: 't, I>(left: I, right: &[(u32, T)])
     where
@@ -326,6 +370,16 @@ mod tests {
         right_mut.sort();
 
         assert_eq!(left_mut, right_mut);
+    }
+
+
+    #[cfg(feature = "serde-support")]
+    fn assert_serde_roundtrip<K: serde::Serialize + serde::de::DeserializeOwned>(before: &BKNode<K>) {
+        let bytes: Vec<u8> = before.to_vec().unwrap();
+        assert!(bytes.len() > 0);
+        let after: BKNode<K> = BKNode::from_slice(&bytes).unwrap();
+        let bytes_after: Vec<u8> = after.to_vec().unwrap();
+        assert_eq!(&bytes[..], &bytes_after[..]);
     }
 
     #[test]
@@ -426,5 +480,56 @@ mod tests {
         assert_eq!(tree.find_exact("caqe"), None);
         assert_eq!(tree.find_exact("cape"), Some(&"cape"));
         assert_eq!(tree.find_exact("book"), Some(&"book"));
+    }
+
+    #[cfg(feature = "serde-support")]
+    #[test]
+    fn tree_serde() {
+        let mut tree: BKTree<String> = BKTree::default();
+        tree.add("".to_string());
+        assert_serde_roundtrip(&tree.root.unwrap());
+
+        let mut tree: BKTree<String> = Default::default();
+        tree.add("book".to_string());
+        tree.add("books".to_string());
+        tree.add("cake".to_string());
+        tree.add("boo".to_string());
+        tree.add("cape".to_string());
+        tree.add("boon".to_string());
+        tree.add("cook".to_string());
+        tree.add("cart".to_string());
+        let tree_root = tree.root.unwrap();
+        assert_serde_roundtrip(&tree_root);
+
+        let mut tree_same: BKTree<String> = Default::default();
+        tree_same.add("book".to_string());
+        tree_same.add("books".to_string());
+        tree_same.add("cake".to_string());
+        tree_same.add("boo".to_string());
+        tree_same.add("cape".to_string());
+        tree_same.add("boon".to_string());
+        tree_same.add("cook".to_string());
+        tree_same.add("cart".to_string());
+        let tree_same_root = tree_same.root.unwrap();
+
+        // Two trees built using the same operations should be the same.
+        let bytes:      Vec<u8> = tree_root     .to_vec().unwrap();
+        let bytes_same: Vec<u8> = tree_same_root.to_vec().unwrap();
+        assert_eq!(bytes, bytes_same);
+
+        // Ensure that we can use `serde_cbor` functions directly.
+        let mut tree: BKTree<String> = Default::default();
+        tree.add("cereal".to_string());
+        let bytes = serde_cbor::to_vec(&tree.root.unwrap()).unwrap();
+        let node: BKNode<String> = serde_cbor::from_slice(&bytes).unwrap();
+        let mut new_tree: BKTree<String> = BKTree::default();
+        new_tree.root = Some(node);
+        assert_eq_sorted(new_tree.find("cereal", 0),
+                         &[(0, "cereal".to_string())]);
+
+        // More tests?
+        //   * Changing insertion order of the above 2nd tree changes the
+        //     serialization output. We should be able to scramble the order of
+        //     insertions for `tree_same` above and get the same serialization.
     }
 }
