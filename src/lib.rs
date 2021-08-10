@@ -156,7 +156,10 @@ where
                     cur_node = next_node;
                     cur_dist = self.metric.distance(&cur_node.key, &key);
                 }
-                cur_node.add_child(cur_dist, key);
+                // If cur_dist == 0, we have landed on a node with the same key.
+                if cur_dist > 0 {
+                    cur_node.add_child(cur_dist, key);
+                }
             }
             None => {
                 self.root = Some(BKNode::new(key));
@@ -426,5 +429,13 @@ mod tests {
         assert_eq!(tree.find_exact("caqe"), None);
         assert_eq!(tree.find_exact("cape"), Some(&"cape"));
         assert_eq!(tree.find_exact("book"), Some(&"book"));
+    }
+
+    #[test]
+    fn one_node_tree() {
+        let mut tree: BKTree<&str> = Default::default();
+        tree.add("book");
+        tree.add("book");
+        assert_eq!(tree.root.unwrap().children.len(), 0);
     }
 }
