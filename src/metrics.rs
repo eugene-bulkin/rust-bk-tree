@@ -26,8 +26,7 @@ use self::triple_accel::{levenshtein, levenshtein::levenshtein_simd_k};
 #[derive(Debug)]
 pub struct Levenshtein;
 
-impl<K: AsRef<str> + ?Sized> Metric<K> for Levenshtein
-{
+impl<K: AsRef<str> + ?Sized> Metric<K> for Levenshtein {
     fn distance(&self, a: &K, b: &K) -> u32 {
         let a_bytes = a.as_ref().as_bytes();
         let b_bytes = b.as_ref().as_bytes();

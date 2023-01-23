@@ -1,10 +1,10 @@
 pub mod metrics;
 
 use std::{
-    fmt::{Debug, Formatter, Result as FmtResult},
-    iter::Extend,
     borrow::Borrow,
     collections::VecDeque,
+    fmt::{Debug, Formatter, Result as FmtResult},
+    iter::Extend,
 };
 
 #[cfg(feature = "enable-fnv")]
@@ -14,7 +14,6 @@ use fnv::FnvHashMap;
 
 #[cfg(not(feature = "enable-fnv"))]
 use std::collections::HashMap;
-
 
 /// A trait for a *metric* (distance function).
 ///
@@ -290,9 +289,11 @@ where
                 max_child_distance,
             } = current;
             let distance_cutoff = max_child_distance.unwrap_or(0) + self.tolerance;
-            let cur_dist = self.metric.threshold_distance(self.key,
-                                                          current.key.borrow() as &Q,
-                                                          distance_cutoff);
+            let cur_dist = self.metric.threshold_distance(
+                self.key,
+                current.key.borrow() as &Q,
+                distance_cutoff,
+            );
             if let Some(dist) = cur_dist {
                 // Find the first child node within an appropriate distance
                 let min_dist = dist.saturating_sub(self.tolerance);
@@ -304,7 +305,7 @@ where
                 }
                 // If this node is also close enough to the key, yield it
                 if dist <= self.tolerance {
-                    return Some((dist, &key));
+                    return Some((dist, key));
                 }
             }
         }
@@ -353,7 +354,7 @@ mod tests {
                 assert_eq!(root.key, "foo");
             }
             None => {
-                assert!(false);
+                unreachable!();
             }
         }
         tree.add("fop");
@@ -364,7 +365,7 @@ mod tests {
                 assert_eq!(root.children.get(&4).unwrap().key, "f\u{e9}\u{e9}");
             }
             None => {
-                assert!(false);
+                unreachable!();
             }
         }
     }
@@ -378,7 +379,7 @@ mod tests {
                 assert_eq!(root.key, "foo");
             }
             None => {
-                assert!(false);
+                unreachable!();
             }
         }
         assert_eq!(tree.root.unwrap().children.get(&1).unwrap().key, "fop");
