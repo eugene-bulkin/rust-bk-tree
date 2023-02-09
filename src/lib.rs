@@ -486,14 +486,14 @@ mod tests {
         let decoded_tree: BKTree<&str> = bincode::deserialize(&encoded_tree[..]).unwrap();
 
         // Test exact search (zero tolerance)
-        assert_eq_sorted(tree.find("book", 0), &[(0, "book")]);
-        assert_eq_sorted(tree.find("books", 0), &[(0, "books")]);
-        assert_eq_sorted(tree.find("cake", 0), &[(0, "cake")]);
-        assert_eq_sorted(tree.find("boo", 0), &[(0, "boo")]);
-        assert_eq_sorted(tree.find("cape", 0), &[(0, "cape")]);
-        assert_eq_sorted(tree.find("boon", 0), &[(0, "boon")]);
-        assert_eq_sorted(tree.find("cook", 0), &[(0, "cook")]);
-        assert_eq_sorted(tree.find("cart", 0), &[(0, "cart")]);
+        assert_eq_sorted(decoded_tree.find("book", 0), &[(0, "book")]);
+        assert_eq_sorted(decoded_tree.find("books", 0), &[(0, "books")]);
+        assert_eq_sorted(decoded_tree.find("cake", 0), &[(0, "cake")]);
+        assert_eq_sorted(decoded_tree.find("boo", 0), &[(0, "boo")]);
+        assert_eq_sorted(decoded_tree.find("cape", 0), &[(0, "cape")]);
+        assert_eq_sorted(decoded_tree.find("boon", 0), &[(0, "boon")]);
+        assert_eq_sorted(decoded_tree.find("cook", 0), &[(0, "cook")]);
+        assert_eq_sorted(decoded_tree.find("cart", 0), &[(0, "cart")]);
 
         // Test fuzzy search
         assert_eq_sorted(
@@ -508,6 +508,6 @@ mod tests {
         );
 
         // Test for false positives
-        assert_eq!(None, tree.find_exact("This &str hasn't been added"));
+        assert_eq!(None, decoded_tree.find_exact("This &str hasn't been added"));
     }
 }
