@@ -1,7 +1,9 @@
 //! This is a collection of string metrics that are suitable for use with a
 //! BK-tree.
 
-use serde::{Deserialize, Serialize};
+#[cfg(feature = "serde-support")]
+extern crate serde;
+
 use Metric;
 
 extern crate triple_accel;
@@ -24,7 +26,10 @@ use self::triple_accel::{levenshtein, levenshtein::levenshtein_simd_k};
 ///
 /// [1]: https://en.wikipedia.org/wiki/Levenshtein_distance
 /// [2]: https://en.wikipedia.org/wiki/Wagner%E2%80%93Fischer_algorithm
-#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "serde-support",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 pub struct Levenshtein;
 
 impl<K: AsRef<str> + ?Sized> Metric<K> for Levenshtein {
