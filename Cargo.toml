@@ -25,3 +25,4 @@ bincode = "1.3"
 default = ["enable-fnv"]
 enable-fnv = ["fnv"]
 serde-support = ["serde"]
+
