@@ -1,4 +1,4 @@
-#[cfg(feature = "serde-support")]
+#[cfg(feature = "serde")]
 extern crate serde;
 pub mod metrics;
 
@@ -33,10 +33,7 @@ pub trait Metric<K: ?Sized> {
 }
 
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
-#[cfg_attr(
-    feature = "serde-support",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 struct BKNode<K> {
     /// The key determining the node.
     key: K,
@@ -93,10 +90,7 @@ where
 }
 
 /// A representation of a [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
-#[cfg_attr(
-    feature = "serde-support",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BKTree<K, M = metrics::Levenshtein> {
     /// The root node. May be empty if nothing has been put in the tree yet.
     root: Option<BKNode<K>>,
@@ -451,7 +445,7 @@ mod tests {
         assert_eq!(tree.root.unwrap().children.len(), 0);
     }
 
-    #[cfg(feature = "serde-support")]
+    #[cfg(feature = "serde")]
     #[test]
     fn test_serialization() {
         let mut tree: BKTree<&str> = Default::default();

@@ -24,5 +24,4 @@ bincode = "1.3"
 [features]
 default = ["enable-fnv"]
 enable-fnv = ["fnv"]
-serde-support = ["serde"]
-
+serde = ["dep:serde"]
