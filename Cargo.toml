@@ -4,7 +4,7 @@ version = "0.5.0"
 authors = ["Eugene Bulkin <eugene.bulkin2@gmail.com>"]
 description = "A Rust BK-tree implementation"
 
-documentation = "http://eugene-bulkin.github.io/rust-docs/rust-bk-tree/bk_tree/index.html"
+documentation = "https://docs.rs/bk-tree/"
 repository = "https://github.com/eugene-bulkin/rust-bk-tree"
 
 readme = "README.md"
