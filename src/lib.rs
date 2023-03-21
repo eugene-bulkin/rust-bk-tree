@@ -1,3 +1,5 @@
+#[cfg(feature = "serde")]
+extern crate serde;
 pub mod metrics;
 
 use std::{
@@ -31,6 +33,7 @@ pub trait Metric<K: ?Sized> {
 }
 
 /// A node within the [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 struct BKNode<K> {
     /// The key determining the node.
     key: K,
@@ -87,7 +90,7 @@ where
 }
 
 /// A representation of a [BK-tree](https://en.wikipedia.org/wiki/BK-tree).
-#[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BKTree<K, M = metrics::Levenshtein> {
     /// The root node. May be empty if nothing has been put in the tree yet.
     root: Option<BKNode<K>>,
@@ -315,6 +318,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    extern crate bincode;
+
     use std::fmt::Debug;
     use {BKNode, BKTree};
 
@@ -438,5 +443,72 @@ mod tests {
         tree.add("book");
         tree.add("book");
         assert_eq!(tree.root.unwrap().children.len(), 0);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serialization() {
+        let mut tree: BKTree<&str> = Default::default();
+        tree.add("book");
+        tree.add("books");
+        tree.add("cake");
+        tree.add("boo");
+        tree.add("cape");
+        tree.add("boon");
+        tree.add("cook");
+        tree.add("cart");
+
+        // Test exact search (zero tolerance)
+        assert_eq_sorted(tree.find("book", 0), &[(0, "book")]);
+        assert_eq_sorted(tree.find("books", 0), &[(0, "books")]);
+        assert_eq_sorted(tree.find("cake", 0), &[(0, "cake")]);
+        assert_eq_sorted(tree.find("boo", 0), &[(0, "boo")]);
+        assert_eq_sorted(tree.find("cape", 0), &[(0, "cape")]);
+        assert_eq_sorted(tree.find("boon", 0), &[(0, "boon")]);
+        assert_eq_sorted(tree.find("cook", 0), &[(0, "cook")]);
+        assert_eq_sorted(tree.find("cart", 0), &[(0, "cart")]);
+
+        // Test fuzzy search
+        assert_eq_sorted(
+            tree.find("book", 1),
+            &[
+                (0, "book"),
+                (1, "books"),
+                (1, "boo"),
+                (1, "boon"),
+                (1, "cook"),
+            ],
+        );
+
+        // Test for false positives
+        assert_eq!(None, tree.find_exact("This &str hasn't been added"));
+
+        let encoded_tree: Vec<u8> = bincode::serialize(&tree).unwrap();
+        let decoded_tree: BKTree<&str> = bincode::deserialize(&encoded_tree[..]).unwrap();
+
+        // Test exact search (zero tolerance)
+        assert_eq_sorted(decoded_tree.find("book", 0), &[(0, "book")]);
+        assert_eq_sorted(decoded_tree.find("books", 0), &[(0, "books")]);
+        assert_eq_sorted(decoded_tree.find("cake", 0), &[(0, "cake")]);
+        assert_eq_sorted(decoded_tree.find("boo", 0), &[(0, "boo")]);
+        assert_eq_sorted(decoded_tree.find("cape", 0), &[(0, "cape")]);
+        assert_eq_sorted(decoded_tree.find("boon", 0), &[(0, "boon")]);
+        assert_eq_sorted(decoded_tree.find("cook", 0), &[(0, "cook")]);
+        assert_eq_sorted(decoded_tree.find("cart", 0), &[(0, "cart")]);
+
+        // Test fuzzy search
+        assert_eq_sorted(
+            decoded_tree.find("book", 1),
+            &[
+                (0, "book"),
+                (1, "books"),
+                (1, "boo"),
+                (1, "boon"),
+                (1, "cook"),
+            ],
+        );
+
+        // Test for false positives
+        assert_eq!(None, decoded_tree.find_exact("This &str hasn't been added"));
     }
 }
