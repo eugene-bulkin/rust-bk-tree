@@ -308,7 +308,7 @@ where
                 }
                 // If this node is also close enough to the key, yield it
                 if dist <= self.tolerance {
-                    return Some((dist, &key));
+                    return Some((dist, key));
                 }
             }
         }
@@ -359,7 +359,7 @@ mod tests {
                 assert_eq!(root.key, "foo");
             }
             None => {
-                assert!(false);
+                unreachable!();
             }
         }
         tree.add("fop");
@@ -370,7 +370,7 @@ mod tests {
                 assert_eq!(root.children.get(&4).unwrap().key, "f\u{e9}\u{e9}");
             }
             None => {
-                assert!(false);
+                unreachable!();
             }
         }
     }
@@ -384,7 +384,7 @@ mod tests {
                 assert_eq!(root.key, "foo");
             }
             None => {
-                assert!(false);
+                unreachable!();
             }
         }
         assert_eq!(tree.root.unwrap().children.get(&1).unwrap().key, "fop");
