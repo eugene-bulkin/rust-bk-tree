@@ -13,7 +13,7 @@ Here's some example usages:
 use bk_tree::{BKTree, metrics};
 
 // A BK-tree using the Levenshtein distance metric.
-let mut tree: BKTree<&str> = BKTree::new(metrics::levenshtein);
+let mut tree: BKTree<&str> = BKTree::new(metrics::Levenshtein);
 
 tree.add("foo");
 tree.add("bar");
