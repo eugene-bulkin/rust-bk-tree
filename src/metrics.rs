@@ -50,7 +50,12 @@ impl<K: AsRef<str> + ?Sized> Metric<K> for CharsLevenshtein {
         lev_distance::lev_distance(a.as_ref(), b.as_ref()) as u32
     }
 
-    fn threshold_distance(&self, a: &K, b: &K, _threshold: u32) -> Option<u32> {
-        Some(<Self as Metric<K>>::distance(self, a, b))
+    fn threshold_distance(&self, a: &K, b: &K, threshold: u32) -> Option<u32> {
+        let distance = <Self as Metric<K>>::distance(self, a, b);
+        if distance < threshold {
+            Some(distance)
+        } else {
+            None
+        }
     }
 }
