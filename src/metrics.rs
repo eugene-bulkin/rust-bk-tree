@@ -42,3 +42,20 @@ impl<K: AsRef<str> + ?Sized> Metric<K> for Levenshtein {
         levenshtein_simd_k(a_bytes, b_bytes, threshold)
     }
 }
+
+#[derive(Debug)]
+pub struct CharsLevenshtein;
+impl<K: AsRef<str> + ?Sized> Metric<K> for CharsLevenshtein {
+    fn distance(&self, a: &K, b: &K) -> u32 {
+        lev_distance::lev_distance(a.as_ref(), b.as_ref()) as u32
+    }
+
+    fn threshold_distance(&self, a: &K, b: &K, threshold: u32) -> Option<u32> {
+        let distance = <Self as Metric<K>>::distance(self, a, b);
+        if distance < threshold {
+            Some(distance)
+        } else {
+            None
+        }
+    }
+}
